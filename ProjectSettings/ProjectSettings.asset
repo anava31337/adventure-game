@@ -140,7 +140,7 @@ PlayerSettings:
   loadStoreDebugModeEnabled: 0
   visionOSBundleVersion: 1.0
   tvOSBundleVersion: 1.0
-  bundleVersion: 0.0.53
+  bundleVersion: 0.0.54
   preloadedAssets:
   - {fileID: 11400000, guid: def6c13c95afa4145975578261c04654, type: 2}
   metroInputSource: 0
