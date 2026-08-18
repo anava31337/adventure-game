@@ -52,5 +52,5 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "AdventureGame.sln"
+    "dotnet.defaultSolution": "adventure-game.sln"
 }
