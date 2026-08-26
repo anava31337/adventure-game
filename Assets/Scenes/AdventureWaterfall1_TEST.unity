@@ -249,7 +249,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1515746117, guid: d1be3672468b844d99dc431612628f2a, type: 3}
       propertyPath: launchSpeedY
-      value: 10
+      value: 24
       objectReference: {fileID: 0}
     - target: {fileID: 4042540650696090503, guid: d1be3672468b844d99dc431612628f2a,
         type: 3}
@@ -879,7 +879,11 @@ MonoBehaviour:
   playerCollider: {fileID: 766138050}
   sweepSkin: 1
   releaseSlack: 2
+  dropClearMargin: 2
+  dropSafetyTime: 0.5
   widthFraction: 0.9
+  landWidthFraction: 1
+  dropFallSpeedCap: 260
 --- !u!114 &779617328 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1947209196423706543, guid: b27dcf90a06d244d2ad1a58fa1d30ef5,
