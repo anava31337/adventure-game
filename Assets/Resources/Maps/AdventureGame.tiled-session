@@ -3,7 +3,6 @@
     "expandedProjectPaths": [
         "."
     ],
-    "file.lastUsedOpenFilter": "All Files (*)",
     "fileStates": {
         "": {
             "scaleInDock": 1,
@@ -531,11 +530,11 @@
             "expandedObjectLayers": [
                 8
             ],
-            "scale": 1.5,
+            "scale": 2,
             "selectedLayer": 4,
             "viewCenter": {
-                "x": 956,
-                "y": 876.3333333333333
+                "x": 452.5,
+                "y": 1127.75
             }
         },
         "bubble1TEST.json##Tools": {
@@ -680,8 +679,6 @@
             "scaleInDock": 1
         }
     },
-    "last.imagePath": "/Users/nava/Studio/Projects/AdventureGame/Assets/Resources/Art/Tools",
-    "map.lastUsedFormat": "json",
     "openFiles": [
         "bubble1TEST.tmx",
         "bubble1TEST.json",
@@ -689,11 +686,10 @@
         "AdventureWaterfall1_TEST.json"
     ],
     "project": "AdventureGame.tiled-project",
-    "property.type": "string",
     "recentFiles": [
+        "bubble1.json",
         "bubble2TEST.json",
         "Overworld1.json",
-        "bubble1.json",
         "bubble1TEST.tmx",
         "bubble1TEST.json",
         "AdventureWaterfall1_TEST.json",
@@ -703,11 +699,5 @@
         "bubble1.tmx",
         "DrumbleVillage.json",
         "inventory.tmx"
-    ],
-    "tileset.embedInMap": true,
-    "tileset.tileSize": {
-        "height": 16,
-        "width": 16
-    },
-    "tileset.type": 1
+    ]
 }
