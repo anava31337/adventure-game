@@ -38,32 +38,30 @@ public class Player : AbstractCharacter
 
     void OnEnable()
     {
-        Enemy.OnCharacterContact += TakeDamage;
+        // NOTE: enemy contact damage is no longer routed through a static event.
+        // Put a DamageDealer on the enemy's BODY collider (damageOnStay = true,
+        // small knockback) and it will damage the player directly on touch.
         Portal.OnPlayerSummon += MovePlayerToPortal;
         //DropItem.OnCharacterTouch += Heal;
     }
 
     void OnDisable()
     {
-        Enemy.OnCharacterContact -= TakeDamage;
         Portal.OnPlayerSummon -= MovePlayerToPortal;
         //DropItem.OnCharacterContact -= Heal;
     }
     #endregion
 
     #region Methods
-    private new void TakeDamage(int value)
+    /// <summary>
+    /// The Player is the ONLY character that overrides this. Enemies and NPCs
+    /// carry their HP bar as a child object, so the inherited broadcast reaches
+    /// it; the player's bar lives on the HUD canvas instead, which listens to
+    /// OnPlayerDamage. All the actual damage maths stays in AbstractCharacter.
+    /// </summary>
+    protected override void BroadcastHealth(int hpPercent)
     {
-        float hpRatio; // = ((float)this.Hp/(float)this.MaxHp) * 100f;
-        int hpPercent; // = (int)hpRatio;
-
-        base.TakeDamage(value);
-        hpRatio = ((float)this.Hp / (float)this.MaxHp) * 100f;
-        hpPercent = (int)hpRatio;
-        if (OnPlayerDamage != null)
-        {
-            OnPlayerDamage(hpPercent);
-        }
+        OnPlayerDamage?.Invoke(hpPercent);
     }
 
     private void MovePlayerToPortal(Vector3 pos)

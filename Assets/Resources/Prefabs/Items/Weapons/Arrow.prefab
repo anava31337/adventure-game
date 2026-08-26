@@ -172,5 +172,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   arrowGravity: 600
+  affectedByGravity: 0
   lifetime: 5
-  damage: 1
+  damage:
+  - type: 0
+    amount: 1
+  shooter: {fileID: 0}

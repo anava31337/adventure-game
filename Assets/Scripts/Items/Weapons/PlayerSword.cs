@@ -1,41 +1,37 @@
 // =============================================================================
-// PlayerSword.cs
-// Place in: Assets/Scripts/Items/Weapons/
+// PlayerSword.cs   —   Assets/Scripts/Items/Weapons/
+//
+// The player's melee hitbox. Goes on the SwordHitBox child of the Player —
+// the collider your animation enables during the AttackLeft / AttackRight frames.
+//
+// It is simply a DamageDealer with a sword-flavoured name, so it shares the exact
+// same hit pipeline as enemy weapons, arrows, and contact damage. There is no
+// `owner` field to set: the owner is found from the parent, which for the
+// SwordHitBox is always the Player.
+//
+// When the sword eventually becomes its own sprite on a child GameObject, nothing
+// here needs to change — the hitbox just moves with the art.
+//
+// Enchantments (a spell that sets the blade alight) are applied at runtime:
+//     sword.EnchantWith(DamageType.Fire, 3);
+//     sword.ClearEnchantments();
 // =============================================================================
 
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class PlayerSword : MonoBehaviour
+public class PlayerSword : DamageDealer
 {
-    public int swordOffense;
-
-    public delegate void PlayerAction<T, T2>(T param1, T2 param2);
-    public static event PlayerAction<Int32, AbstractCharacter> OnWeaponContact;
-
-    protected void OnTriggerEnter2D(Collider2D collider)
+    protected override void Awake()
     {
-        // ── Enemy ────────────────────────────────────────────────────────────
-        var enemy = collider.GetComponent<Enemy>();
-        if (enemy != null)
-        {
-            OnWeaponContact?.Invoke(swordOffense, enemy);
-            var blinker = collider.GetComponent<ColorBlinker>();
-            if (blinker != null) blinker.enabled = true;
-            return;
-        }
+        base.Awake();   // finds the Player as owner via the parent hierarchy
 
-        // ── Hostile NPC ──────────────────────────────────────────────────────
-        // NPCs that have been flagged as hostile receive weapon hits exactly
-        // like enemies.  Passive NPCs are ignored by the sword.
-        var npc = collider.GetComponent<NPC>();
-        if (npc != null && npc.isHostile)
-        {
-            OnWeaponContact?.Invoke(swordOffense, npc);
-            var blinker = collider.GetComponent<ColorBlinker>();
-            if (blinker != null) blinker.enabled = true;
-        }
+        // A swung weapon should strike once per swing, not tick continuously.
+        damageOnStay = false;
     }
+
+    /// <summary>Temporarily add typed damage to the blade — e.g. a fire enchantment.</summary>
+    public void EnchantWith(DamageType type, int amount) => AddBonusDamage(type, amount);
+
+    /// <summary>Remove all temporary enchantments from the blade.</summary>
+    public void ClearEnchantments() => ClearBonusDamage();
 }
