@@ -39,6 +39,11 @@ public class MapManager : MonoBehaviour
     [Tooltip("Seconds between chunk-visibility checks. Small but non-zero to avoid doing it every frame.")]
     public float chunkUpdateInterval = 0.15f;
 
+    [Tooltip("The object chunks load around. Drag your player here. If left empty, " +
+             "MapManager falls back to finding an object tagged 'Player'. If neither " +
+             "exists, NO TILES WILL RENDER — a warning is logged saying so.")]
+    public Transform playerTransform;
+
     // Per-cell tile record so chunks can be placed/cleared on demand without re-parsing JSON.
     private struct CellTile
     {
@@ -552,7 +557,11 @@ public class MapManager : MonoBehaviour
         strip.layer = LayerMask.NameToLayer("Ground"); // ground-check still detects it
 
         BoxCollider2D box = strip.AddComponent<BoxCollider2D>();
-        box.size = new Vector2(runTiles * tileSize, stripThick);
+        box.size      = new Vector2(runTiles * tileSize, stripThick);
+        // Trigger, not solid: the physics engine must never resolve a one-way
+        // collision, or the player gets depenetrated (hover) or embedded.
+        // OneWayPlatformRider on the player handles landing and support exactly.
+        box.isTrigger = true;
 
         strip.AddComponent<OneWayPlatform>();
     }
@@ -564,8 +573,27 @@ public class MapManager : MonoBehaviour
     private void InitChunking()
     {
         _cam = Camera.main;
-        var p = GameObject.FindWithTag("Player");
-        if (p != null) _player = p.transform;
+
+        // Prefer the explicitly-assigned transform; fall back to the Player tag.
+        _player = playerTransform;
+        if (_player == null)
+        {
+            var p = GameObject.FindWithTag("Player");
+            if (p != null) _player = p.transform;
+        }
+
+        if (_player == null)
+        {
+            // Loud, specific failure. Chunked loading needs something to load
+            // around; without it the tilemaps are created but stay EMPTY, which
+            // looks exactly like broken art or a broken tileset.
+            Debug.LogWarning(
+                "[MapManager] No player found — chunked tile loading is disabled and " +
+                "NO TILES WILL RENDER in this scene.\n" +
+                "Fix: assign 'Player Transform' on the MapManager, or tag your player " +
+                "GameObject as 'Player'.", this);
+            return;
+        }
 
         _chunkingReady = true;
         _chunkTimer    = 0f;
@@ -595,8 +623,13 @@ public class MapManager : MonoBehaviour
     {
         if (_player == null)
         {
-            var p = GameObject.FindWithTag("Player");
-            if (p != null) _player = p.transform; else return;
+            _player = playerTransform;
+            if (_player == null)
+            {
+                var p = GameObject.FindWithTag("Player");
+                if (p != null) _player = p.transform;
+            }
+            if (_player == null) return;   // already warned in InitChunking
         }
         if (_cam == null) _cam = Camera.main;
 

@@ -19,9 +19,20 @@ public class SpawnEnemy : MonoBehaviour
 
     [Header("Arc Launch")]
     [Tooltip("Horizontal launch speed of spawned children (px/s).")]
-    public float launchSpeedX = 90f;
-    [Tooltip("Upward launch speed of spawned children (px/s).")]
-    public float launchSpeedY = 200f;
+    public float launchSpeedX = 70f;
+    [Tooltip("Upward launch speed of spawned children (px/s). Defaults match the " +
+             "player's jumpHeight (320) so the pop reads like a normal jump arc.")]
+    public float launchSpeedY = 320f;
+    [Tooltip("Maximum seconds the arc may run before control is handed back, in " +
+             "case the creature never registers a landing. Normally it lands first.")]
+    public float launchControlDelay = 1.5f;
+    [Tooltip("Downward acceleration during the arc (px/s²). Defaults to 981 to match " +
+             "the player's gravity, so the arc has the same shape as a player jump. " +
+             "Owned by this script, so the pop is identical regardless of prefab setup.")]
+    public float launchGravity = 981f;
+    [Tooltip("Give each spawned creature randomised Patrol timings. OFF by default " +
+             "so the pop-out direction, arc, and speed stay completely predictable.")]
+    public bool randomizeSpawnedPatrol = false;
 
     [Header("Ground Avoidance")]
     [Tooltip("Layer(s) considered solid — spawns are nudged out of these.")]
@@ -43,21 +54,44 @@ public class SpawnEnemy : MonoBehaviour
 
         for (int i = 0; i < spawnCount; i++)
         {
-            // Alternate left/right; spread extras if spawnCount > 2
+            // Alternate sides: 0 goes left, 1 right, 2 left, and so on.
             float side = (i % 2 == 0) ? -1f : 1f;
-            float tier = i / 2;   // 0,0,1,1,2,2...
 
-            Vector2 basePos = (Vector2)transform.position
-                            + new Vector2(side * (16f + tier * 8f), 16f);
-
-            Vector2 spawnPos = FindClearSpawn(basePos);
+            // Spawn at the parent's EXACT position so the children burst out of
+            // the creature that just died, rather than appearing already offset
+            // up and to the side of it.
+            Vector2 spawnPos = FindClearSpawn(transform.position);
 
             var clone = Instantiate(enemyPrefab, spawnPos, Quaternion.identity);
 
-            // Launch in an arc away from the death point
+            // Face and walk the way it was flung.
+            var patrol = clone.GetComponent<Patrol>();
+            if (patrol != null)
+            {
+                if (randomizeSpawnedPatrol)
+                {
+                    patrol.randomizeOnStart = true;
+                    patrol.Randomize();
+                }
+                patrol.SetDirection(side < 0f);
+            }
+
+            // Refresh the HP bar. A freshly spawned creature has never been
+            // damaged, so nothing would otherwise tell its bar what to display.
+            var cloneChar = clone.GetComponent<AbstractCharacter>();
+            if (cloneChar != null) cloneChar.RefreshHealthDisplay();
+
+            // The arc runs on the CLONE, not on this dying parent. This object is
+            // destroyed immediately after OnDeath fires, so a coroutine started
+            // here would be killed on the spot — which is exactly why spawned
+            // enemies used to drift down and then freeze permanently.
             var rb = clone.GetComponent<Rigidbody2D>();
             if (rb != null)
-                rb.velocity = new Vector2(side * launchSpeedX, launchSpeedY);
+            {
+                var launch = clone.AddComponent<SpawnLaunch>();
+                launch.Begin(new Vector2(side * launchSpeedX, launchSpeedY),
+                             launchGravity, launchControlDelay, groundLayer, patrol);
+            }
         }
     }
 

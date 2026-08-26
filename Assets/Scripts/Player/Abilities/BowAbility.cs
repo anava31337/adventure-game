@@ -112,9 +112,18 @@ public class BowAbility : AbstractAbility
 
         // Only diagonal shots arc under gravity; straight shots fly level.
         arrow.affectedByGravity = diagonal;
+
+        // Tell the arrow who fired it. Without this the arrow has NO owner, and
+        // CombatRules treats owner-less damage as an environmental hazard that
+        // hits anyone — which is why arrows were damaging the player.
+        arrow.owner = GetComponent<AbstractCharacter>();
+
+        // Match the shooter's sorting layer/order so the arrow draws in the same
+        // plane as the character instead of behind the map art.
+        arrow.MatchSortingTo(GetComponentInChildren<SpriteRenderer>());
         // Diagonal shots launch faster (×arcIntensity) so the arc carries farther.
         float launchSpeed = diagonal ? arrowSpeed * arcIntensity : arrowSpeed;
-        arrow.Launch(dir, launchSpeed);
+        arrow.Launch(dir, launchSpeed, GetComponent<AbstractCharacter>());
         _cooldownTimer = fireCooldown;
 
         // TODO: consume one arrow from inventory, set hasArrows = false when empty

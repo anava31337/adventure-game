@@ -1,98 +1,79 @@
 // =============================================================================
 // OneWayPlatform.cs   —   Assets/Scripts/World/
 //
-// Reliable one-way platform using POSITION-BASED collision rather than a
-// PlatformEffector2D. The effector is finicky with thick, tile-merged composite
-// colliders — the player gets embedded in the 16px-tall body, catches on side
-// and bottom edges, and behaves erratically when platform rows are stacked.
+// A passive marker for a one-way platform surface. It holds NO landing logic —
+// all of that lives in OneWayPlatformRider on the player.
 //
-// This approach instead:
-//   • Uses a THIN collider strip at the very top of the platform run, so there
-//     is no thick body to get stuck inside and no meaningful side/bottom edge.
-//   • Toggles collision purely from the player's feet position vs the strip top:
-//       - feet above the strip top (and falling) → solid: the player lands.
-//       - feet below the strip top, or moving up → pass through.
-//   • Each platform run is its own object, so stacked rows never interfere.
+// WHY THE REWRITE:
+// Previous versions asked the physics engine to resolve one-way collisions by
+// toggling Physics2D.IgnoreCollision every frame. That can never be pixel-exact:
 //
-// MapManager generates these automatically from a "PLATFORM" layer; you can
-// also place one by hand on a thin BoxCollider2D for a one-off platform.
+//   • Re-enabling collision while the player already overlaps makes Unity
+//     depenetrate them, pushing them out in whatever direction is shortest —
+//     that is the 1–3px "hovering above the platform" pop.
+//   • Physics steps are discrete. Falling fast, the player can pass from above
+//     the surface to several pixels below it inside a single FixedUpdate, so
+//     collision resolves from INSIDE the strip — that is the "stuck 2–3px in
+//     the tile" bug.
+//   • At 1 pixel-per-unit, contact offsets and depenetration slop are the same
+//     order of magnitude as a whole pixel, so the error is always visible.
 //
-// SETUP (manual):
-//   • Thin BoxCollider2D (e.g. full width, ~2–4px tall) positioned at the top
-//     surface of the platform.
-//   • This component. Set `playerTag` if your player isn't tagged "Player".
+// The fix is to stop using collision resolution for this at all. The collider
+// here is a TRIGGER, so physics never pushes the player anywhere. The rider
+// sweeps the player's feet between physics steps, detects the exact frame they
+// cross the surface, and snaps them onto it. Landing becomes exact by
+// construction rather than by tuning tolerances.
 // =============================================================================
 
+using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(Collider2D))]
 public class OneWayPlatform : MonoBehaviour
 {
-    [Tooltip("Tag used to find the player. Default 'Player'.")]
-    public string playerTag = "Player";
+    /// <summary>Every active one-way platform, for the rider to query cheaply.</summary>
+    public static readonly List<OneWayPlatform> All = new List<OneWayPlatform>();
 
-    [Tooltip("Small vertical tolerance (px) above the strip within which the " +
-             "player is considered 'on top' and will be landed on.")]
-    public float landTolerance = 2f;
-
-    [Tooltip("Seconds collision stays disabled after a deliberate drop-through.")]
+    [Tooltip("Seconds this platform stays intangible after a deliberate drop-through.")]
     public float dropThroughTime = 0.35f;
 
-    private Collider2D _platformCol;
-    private Collider2D _playerCol;
-    private Rigidbody2D _playerRb;
-    private float _dropTimer;
+    private Collider2D _col;
+    private float      _dropTimer;
+
+    /// <summary>World-space Y of the surface the player stands on.</summary>
+    public float SurfaceY => _col.bounds.max.y;
+
+    /// <summary>Horizontal extent of the surface.</summary>
+    public float MinX => _col.bounds.min.x;
+    public float MaxX => _col.bounds.max.x;
+
+    /// <summary>True while a drop-through is in progress; the rider skips this platform.</summary>
+    public bool IsDropping => _dropTimer > 0f;
 
     private void Awake()
     {
-        _platformCol = GetComponent<Collider2D>();
+        _col = GetComponent<Collider2D>();
+
+        // A trigger never resolves collision, so the player can never be pushed
+        // out of, embedded in, or popped above this platform. Support while
+        // standing is applied by the rider instead.
+        _col.isTrigger = true;
     }
 
-    private void Start()
+    private void OnEnable()  { if (!All.Contains(this)) All.Add(this); }
+    private void OnDisable() { All.Remove(this); }
+
+    private void Update()
     {
-        var player = GameObject.FindWithTag(playerTag);
-        if (player != null)
-        {
-            _playerCol = player.GetComponent<Collider2D>();
-            _playerRb  = player.GetComponent<Rigidbody2D>();
-        }
+        if (_dropTimer > 0f) _dropTimer -= Time.deltaTime;
     }
 
-    private void FixedUpdate()
+    /// <summary>Makes this platform intangible briefly so the player can drop through.</summary>
+    public void DropThrough() => _dropTimer = dropThroughTime;
+
+    /// <summary>True if the given horizontal span overlaps this platform's surface.</summary>
+    public bool OverlapsHorizontally(float minX, float maxX)
     {
-        if (_platformCol == null || _playerCol == null || _playerRb == null) return;
-
-        // Deliberate drop-through: keep collision off until the timer expires.
-        if (_dropTimer > 0f)
-        {
-            _dropTimer -= Time.fixedDeltaTime;
-            Physics2D.IgnoreCollision(_playerCol, _platformCol, true);
-            return;
-        }
-
-        float platformTop = _platformCol.bounds.max.y;
-        float playerFeet  = _playerCol.bounds.min.y;
-        bool  movingUp    = _playerRb.velocity.y > 0.01f;
-
-        // Solid only when the player's feet are at/above the strip top AND the
-        // player isn't moving upward. Otherwise the player passes through.
-        bool shouldCollide = (playerFeet >= platformTop - landTolerance) && !movingUp;
-
-        Physics2D.IgnoreCollision(_playerCol, _platformCol, !shouldCollide);
-    }
-
-    /// <summary>Called by the player controller on a Down+Jump to drop through.</summary>
-    public void DropThrough()
-    {
-        _dropTimer = dropThroughTime;
-    }
-
-    /// <summary>True if the player is currently standing on this platform's top.</summary>
-    public bool PlayerIsOnTop()
-    {
-        if (_platformCol == null || _playerCol == null) return false;
-        float platformTop = _platformCol.bounds.max.y;
-        float playerFeet  = _playerCol.bounds.min.y;
-        return Mathf.Abs(playerFeet - platformTop) <= landTolerance + 1f;
+        return maxX > MinX && minX < MaxX;
     }
 }

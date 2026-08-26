@@ -3,7 +3,7 @@
 //
 // Changes the enemy's behaviour when its health drops below a threshold —
 // for example, enraging (faster, more aggressive) or fleeing when wounded.
-// Listens to Enemy.OnEnemyDamage and fires UnityEvents at the threshold.
+// Listens to AbstractCharacter.OnCharacterDamaged and fires UnityEvents at the threshold.
 //
 // Wire OnEnraged in the Inspector to: boost EnemyChase.chaseSpeed, shorten
 // EnemyProjectile.fireInterval, enable EnemyFlee, swap an animation, etc.
@@ -31,15 +31,15 @@ public class EnemyHealthState : MonoBehaviour
     private void OnEnable()
     {
         self = GetComponent<AbstractCharacter>();
-        Enemy.OnEnemyDamage += HandleDamage;
+        AbstractCharacter.OnCharacterDamaged += HandleDamage;
     }
 
     private void OnDisable()
     {
-        Enemy.OnEnemyDamage -= HandleDamage;
+        AbstractCharacter.OnCharacterDamaged -= HandleDamage;
     }
 
-    // Enemy.OnEnemyDamage passes (hpPercent, theDamagedCharacter)
+    // AbstractCharacter.OnCharacterDamaged passes (hpPercent, theDamagedCharacter)
     private void HandleDamage(int hpPercent, AbstractCharacter who)
     {
         if (who != self) return;   // only react to OUR own damage
