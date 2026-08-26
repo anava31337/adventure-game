@@ -23,6 +23,7 @@
 //     unless you want HookPoints on a different layer
 // =============================================================================
 
+using System.Collections.Generic;
 using UnityEngine;
 
 public class WhipAbility : AbstractAbility
@@ -47,6 +48,20 @@ public class WhipAbility : AbstractAbility
     [Tooltip("Radius of the tip-detection circle when sweeping for HookPoints (px).")]
     public float hookDetectRadius = 5f;
 
+    [Header("Damage")]
+    [Tooltip("Damage the whip tip deals on contact. Add a Fire entry for a " +
+             "flaming whip; targets weak to that type take extra.")]
+    public List<DamagePacket> damage = new List<DamagePacket>
+    {
+        new DamagePacket(DamageType.Physical, 1)
+    };
+    [Tooltip("Layers the whip can damage (your enemy layer).")]
+    public LayerMask damageLayers = ~0;
+    [Tooltip("Radius around the whip tip that registers a hit (px).")]
+    public float damageRadius = 5f;
+    [Tooltip("Horizontal push applied to whatever the whip strikes (px/s). 0 = none.")]
+    public float knockbackForce = 60f;
+
     [Header("Swing")]
     [Tooltip("Effective gravity for the pendulum. Leave 0 to read from CharacterController2D.")]
     public float gravityOverride   = 0f;
@@ -55,7 +70,7 @@ public class WhipAbility : AbstractAbility
     [Tooltip("Max swing angle from vertical (degrees). 85 = nearly horizontal at full pump.")]
     public float maxSwingAngleDeg  = 82f;
     [Tooltip("Slight air-resistance damping per second (0 = no damping).")]
-    public float angularDamping    = 0.08f;
+    public float angularDamping    = 0.55f;
 
     [Header("Visuals")]
     [Tooltip("LineRenderer on the Player GameObject used to draw the whip rope.")]
@@ -72,6 +87,8 @@ public class WhipAbility : AbstractAbility
     private Vector2 _tipPos;
     private Vector2 _whipDir;
     private float   _currentLength;   // whip length during extend/retract (px)
+    // Targets already struck during the current swing (cleared on each new swing)
+    private readonly HashSet<GameObject> _hitThisSwing = new HashSet<GameObject>();
 
     // Swing state
     private Vector2 _pivotPos;
@@ -167,6 +184,7 @@ public class WhipAbility : AbstractAbility
         Debug.Log("[WhipAbility] Whip extending!");
         _whipDir       = GetWhipDirection();
         _currentLength = 0f;
+        _hitThisSwing.Clear();   // fresh swing — everything can be hit again
         _tipPos        = OriginPos;
         _state         = WhipState.Extending;
         if (whipLine) whipLine.enabled = true;
@@ -174,6 +192,9 @@ public class WhipAbility : AbstractAbility
 
     private void UpdateExtending()
     {
+        // Damage anything the tip sweeps through — each target only once per swing.
+        DamageAtTip();
+
         // Track length as a scalar; tip is always relative to the CURRENT origin,
         // so the whip stays straight even while the player jumps or moves.
         _currentLength += extensionSpeed * Time.deltaTime;
@@ -237,7 +258,17 @@ public class WhipAbility : AbstractAbility
         Vector2 perpDir = new Vector2(Mathf.Cos(_angle), Mathf.Sin(_angle));
         _angularVel = RB != null ? Vector2.Dot(RB.velocity, perpDir) / _ropeLength : 0f;
 
-        // Hand over physics control
+        // Hand over physics control.
+        // Going KINEMATIC is the key fix for the jitter: while Dynamic, every
+        // MovePosition is fought by the collision solver and any leftover
+        // velocity, so the player visibly vibrates on the rope. Kinematic makes
+        // our pendulum the single authority over position.
+        if (RB != null)
+        {
+            RB.velocity        = Vector2.zero;
+            RB.angularVelocity = 0f;
+            RB.bodyType        = RigidbodyType2D.Kinematic;
+        }
         Controller.IsExternallyControlled = true;
     }
 
@@ -281,6 +312,19 @@ public class WhipAbility : AbstractAbility
             _angularVel = -_angularVel * 0.1f; // slight bounce
         }
 
+        // Settle: once the swing is nearly stopped near the bottom, snap it to
+        // rest instead of letting a tiny residual oscillation bob forever.
+        // CRITICAL: skip this while the player is pumping. Hanging straight down
+        // means angle≈0 and angularVel≈0 every frame, so without this guard the
+        // clamp erased the pump input the instant it was applied — which is why
+        // left/right did nothing when hooked from directly below.
+        bool pumping = Mathf.Abs(h) > 0.1f;
+        if (!pumping && Mathf.Abs(_angularVel) < 0.05f && Mathf.Abs(_angle) < 0.02f)
+        {
+            _angularVel = 0f;
+            _angle      = 0f;
+        }
+
         // Move player to pendulum position
         Vector2 newPos = _pivotPos + new Vector2(Mathf.Sin(_angle), -Mathf.Cos(_angle)) * _ropeLength;
         RB.MovePosition(newPos);
@@ -288,10 +332,14 @@ public class WhipAbility : AbstractAbility
 
     private void Detach()
     {
-        // Release velocity = tangential velocity at current angle
+        // Restore dynamic physics BEFORE applying the release velocity, or the
+        // kinematic body would simply ignore it.
         Vector2 perpDir = new Vector2(Mathf.Cos(_angle), Mathf.Sin(_angle));
         if (RB != null)
+        {
+            RB.bodyType = RigidbodyType2D.Dynamic;
             RB.velocity = perpDir * (_angularVel * _ropeLength);
+        }
 
         Controller.IsExternallyControlled = false;
         _state = WhipState.Retracting;
@@ -346,6 +394,46 @@ public class WhipAbility : AbstractAbility
     /// Returns the whip fire direction based on player facing + vertical input.
     /// Straight left/right or 45° diagonally upward.
     /// </summary>
+    /// <summary>
+    /// Deals damage to anything the whip tip touches, using the same direct
+    /// IDamageable call the sword and arrows use. Each target is hit at most
+    /// once per swing.
+    /// </summary>
+    private void DamageAtTip()
+    {
+        // Owner of the whip = the player wielding it. CombatRules then decides
+        // who may be struck, using the same rules as the sword and arrows.
+        AbstractCharacter wielder = GetComponent<AbstractCharacter>();
+
+        Collider2D[] hits = Physics2D.OverlapCircleAll(_tipPos, damageRadius, damageLayers);
+        foreach (var h in hits)
+        {
+            IDamageable target = CombatRules.ResolveTarget(h, wielder);
+            if (target == null) continue;
+
+            GameObject go = target.DamageableObject;
+            if (_hitThisSwing.Contains(go)) continue;   // one hit per target per swing
+            _hitThisSwing.Add(go);
+
+            var info = new DamageInfo
+            {
+                source     = gameObject,
+                instigator = wielder,
+                hitPoint   = _tipPos
+            };
+            foreach (var p in damage) info.Add(p.type, p.amount);
+
+            if (knockbackForce != 0f)
+            {
+                float dir = Mathf.Sign(go.transform.position.x - transform.position.x);
+                if (dir == 0f) dir = 1f;
+                info.knockback = new Vector2(dir * knockbackForce, 0f);
+            }
+
+            target.TakeDamage(info);
+        }
+    }
+
     private Vector2 GetWhipDirection()
     {
         bool facingRight = Controller != null ? Controller.FacingRight : true;
