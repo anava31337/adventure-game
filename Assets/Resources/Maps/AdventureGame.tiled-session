@@ -151,8 +151,8 @@
             "scale": 2,
             "selectedLayer": 5,
             "viewCenter": {
-                "x": 288.75,
-                "y": 632
+                "x": 274.5,
+                "y": 617.75
             }
         },
         "AdventureWaterfall1_TEST.json##Tools": {
@@ -391,8 +391,8 @@
             "scale": 1,
             "selectedLayer": 3,
             "viewCenter": {
-                "x": 1023.5,
-                "y": 896
+                "x": 1024,
+                "y": 896.5
             }
         },
         "Overworld1.json##Tools": {
@@ -498,7 +498,7 @@
             "scale": 0.5,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 833,
+                "x": 834,
                 "y": 1161
             }
         },
@@ -532,15 +532,16 @@
                 8
             ],
             "scale": 1.5,
-            "selectedLayer": 5,
+            "selectedLayer": 4,
             "viewCenter": {
-                "x": 1023.6666666666666,
-                "y": 896
+                "x": 956,
+                "y": 876.3333333333333
             }
         },
         "bubble1TEST.json##Tools": {
             "dynamicWrapping": true,
-            "scaleInDock": 1
+            "scaleInDock": 1,
+            "scaleInEditor": 1
         },
         "bubble1TEST.json#AdventureSet": {
             "dynamicWrapping": false,
@@ -557,10 +558,10 @@
                 8
             ],
             "scale": 1.5,
-            "selectedLayer": 5,
+            "selectedLayer": 4,
             "viewCenter": {
-                "x": 1023.6666666666666,
-                "y": 892
+                "x": 1042,
+                "y": 811.6666666666666
             }
         },
         "bubble1TEST.tmx##Tools": {
@@ -572,7 +573,28 @@
             "scaleInDock": 1
         },
         "bubble1TEST.tmx#Overworld": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "bubble2TEST.json": {
+            "scale": 1.5,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": 956,
+                "y": 876.9999999999999
+            }
+        },
+        "bubble2TEST.json##Tools": {
+            "dynamicWrapping": true,
             "scaleInDock": 1
+        },
+        "bubble2TEST.json#AdventureSet": {
+            "scaleInDock": 1
+        },
+        "bubble2TEST.json#Overworld": {
+            "dynamicWrapping": false,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
         },
         "cave1.tmx": {
             "scale": 1,
@@ -669,18 +691,18 @@
     "project": "AdventureGame.tiled-project",
     "property.type": "string",
     "recentFiles": [
+        "bubble2TEST.json",
+        "Overworld1.json",
+        "bubble1.json",
         "bubble1TEST.tmx",
         "bubble1TEST.json",
-        "Overworld1.json",
         "AdventureWaterfall1_TEST.json",
         "AdventureWaterfall1_TEST1.json",
         "town1W.tmx",
         "Overworld1.tmx",
         "bubble1.tmx",
-        "bubble1.json",
         "DrumbleVillage.json",
-        "inventory.tmx",
-        "DrumbleVillage.tmx"
+        "inventory.tmx"
     ],
     "tileset.embedInMap": true,
     "tileset.tileSize": {
