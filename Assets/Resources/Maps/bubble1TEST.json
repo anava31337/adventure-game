@@ -625,7 +625,6 @@
          "name":"Interactive",
          "objects":[
                 {
-                 "class":"",
                  "gid":1028,
                  "height":32,
                  "id":14,
@@ -647,13 +646,13 @@
                          "value":0
                         }],
                  "rotation":90,
+                 "type":"",
                  "visible":true,
                  "width":64,
                  "x":400,
                  "y":1120
                 }, 
                 {
-                 "class":"",
                  "gid":1028,
                  "height":32,
                  "id":17,
@@ -675,13 +674,13 @@
                          "value":1
                         }],
                  "rotation":90,
+                 "type":"",
                  "visible":true,
                  "width":64,
                  "x":432,
                  "y":1120
                 }, 
                 {
-                 "class":"",
                  "gid":1028,
                  "height":16,
                  "id":18,
@@ -703,13 +702,13 @@
                          "value":3
                         }],
                  "rotation":90,
+                 "type":"",
                  "visible":true,
                  "width":16,
                  "x":536,
                  "y":1144
                 }, 
                 {
-                 "class":"",
                  "gid":1028,
                  "height":16,
                  "id":19,
@@ -731,6 +730,7 @@
                          "value":2
                         }],
                  "rotation":90,
+                 "type":"",
                  "visible":true,
                  "width":16,
                  "x":472,
@@ -746,7 +746,7 @@
  "nextobjectid":21,
  "orientation":"orthogonal",
  "renderorder":"right-down",
- "tiledversion":"1.9.2",
+ "tiledversion":"1.11.0",
  "tileheight":16,
  "tilesets":[
         {
@@ -819,6 +819,6 @@
         }],
  "tilewidth":16,
  "type":"map",
- "version":"1.9",
+ "version":"1.11",
  "width":128
 }
