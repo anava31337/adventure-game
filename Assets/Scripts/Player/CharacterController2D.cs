@@ -48,6 +48,11 @@ public class CharacterController2D : MonoBehaviour
     public float fallGravityMultiplier  = 2.5f;
     [Tooltip("Extra gravity on early Jump release.")]
     public float lowJumpMultiplier      = 2.0f;
+    [Tooltip("Maximum downward speed (px/s) gravity may reach while grounded. " +
+             "Presses the player onto the surface so any small gap — such as the " +
+             "one a knockback pop leaves behind — closes within a frame or two, " +
+             "while standing still never accumulates fall speed.")]
+    public float groundSettleSpeed      = 60f;
 
     [Header("Variable Jump & Feel")]
     [Range(0f, 1f)]
@@ -59,6 +64,36 @@ public class CharacterController2D : MonoBehaviour
     public float jumpBufferTime  = 0.15f;
     [Tooltip("Terminal fall speed cap (px/s).")]
     public float maxFallSpeed    = 1200f;
+
+    [Header("Crouch / Look Up")]
+    [Tooltip("Speed multiplier while crouch-walking (holding Down + a direction).")]
+    public float sneakSpeedMultiplier = 0.55f;
+    [Tooltip("Axis magnitude past which Up/Down counts as held.")]
+    public float verticalDeadzone = 0.4f;
+
+    [Header("Knockback")]
+    [Tooltip("Seconds the player loses horizontal control after being knocked back. " +
+             "Without this the controller's acceleration (which is near-instant) " +
+             "overwrites the knockback velocity on the very next physics step, " +
+             "which is why knockback appeared to do almost nothing.")]
+    public float knockbackRecovery = 0.22f;
+
+    [Header("Landing")]
+    [Tooltip("Seconds after landing before another jump is allowed on solid ground.")]
+    public float landingJumpDelay = 0.04f;
+    [Tooltip("Seconds after landing before another jump is allowed inside a volume " +
+             "(water, etc.). Larger than the ground value so swimming feels weighty " +
+             "instead of letting the player bounce off the bottom instantly.")]
+    public float volumeLandingJumpDelay = 0.02f;
+
+    [Header("Volume Resistance")]
+    [Tooltip("Velocity retained per second while inside a volume. 1 = no drag, " +
+             "0.85 = noticeably heavy water. Applies to both axes.")]
+    public float volumeDrag = 0.88f;
+    [Tooltip("Extra velocity bleed applied ONLY to upward motion in a volume. This " +
+             "is what stops the player rocketing off the bottom: rising is damped " +
+             "hard while sinking stays natural. Lower = more resistance.")]
+    public float volumeUpwardDrag = 0.55f;
 
     // =========================================================================
     // Private state
@@ -78,6 +113,10 @@ public class CharacterController2D : MonoBehaviour
     private float coyoteTimer;
     private float jumpBufferTimer;
     private float jumpGroundCooldown;
+    private float landedAtTime = -99f;
+    private OneWayPlatformRider platformRider;
+    private float knockbackUntil;
+    private bool  wasGroundedLastFrame;
     private int   jumpsRemaining;
     private const float JUMP_COOLDOWN = 0.12f;
 
@@ -144,6 +183,29 @@ public class CharacterController2D : MonoBehaviour
     /// <summary>Raw horizontal axis value (-1 left … +1 right).</summary>
     public float CurrentHorizontalInput => horizontal;
 
+    // ── Directional gating ────────────────────────────────────────────────────
+    // Up and Down INTERRUPT left/right rather than combining with it:
+    //   Up (alone or diagonal)  → stationary. Placeholder for a future "look up",
+    //                             and it lets the player aim a diagonal bow shot
+    //                             without walking out from under it.
+    //   Down + left/right       → crouch-walk (Sneak animations), reduced speed.
+    //   Down alone              → stationary duck.
+    //   Left/right alone        → normal walk.
+
+    private bool UpHeld   => vertical >  verticalDeadzone;
+    private bool DownHeld => vertical < -verticalDeadzone;
+
+    /// <summary>Horizontal input after the up/down interrupt rules are applied.</summary>
+    private float GatedHorizontal => UpHeld ? 0f : horizontal;
+
+    /// <summary>Move speed for this frame, reduced while crouch-walking.</summary>
+    private float CurrentMoveSpeed =>
+        DownHeld ? EffectiveSpeed * sneakSpeedMultiplier : EffectiveSpeed;
+
+    /// <summary>True while a jump is blocked by the post-landing settle delay.</summary>
+    private bool InLandingDelay =>
+        Time.time < landedAtTime + (IsInVolume ? volumeLandingJumpDelay : landingJumpDelay);
+
     /// <summary>
     /// Set to true by an ability (e.g. WhipAbility while swinging) to pause all
     /// CharacterController2D physics so the ability can drive the Rigidbody directly.
@@ -157,6 +219,7 @@ public class CharacterController2D : MonoBehaviour
 
     public void Awake()
     {
+        platformRider = GetComponent<OneWayPlatformRider>();
         playerBaseInputs = new PlayerBaseInput();
         playerBaseInputs.Overworld.Disable();
         playerBaseInputs.Character.Enable();
@@ -188,6 +251,10 @@ public class CharacterController2D : MonoBehaviour
         wasGrounded = isGrounded;
         isGrounded  = CheckGrounded();
 
+        // Note the instant we touch down so the landing settle delay can run.
+        if (isGrounded && !wasGroundedLastFrame) landedAtTime = Time.time;
+        wasGroundedLastFrame = isGrounded;
+
         // ── Land ───────────────────────────────────────────────────────────
         if (isGrounded && !wasGrounded)
         {
@@ -204,6 +271,17 @@ public class CharacterController2D : MonoBehaviour
             }
         }
 
+        // ── Stuck-state recovery ──────────────────────────────────────────
+        // If we're on the ground and not moving upward, an airborne state is
+        // wrong by definition. Without this, anything that sets Jumping/Falling
+        // while the player never actually leaves the floor would freeze the
+        // animation system until the next real jump.
+        if (isGrounded && rb.velocity.y <= 0.01f && !InKnockback
+            && (state == State.Jumping || state == State.Falling))
+        {
+            RestoreGroundAnimation();
+        }
+
         // ── Coyote ────────────────────────────────────────────────────────
         if (wasGrounded && !isGrounded && rb.velocity.y <= 0f)
             coyoteTimer = coyoteTime;
@@ -218,7 +296,9 @@ public class CharacterController2D : MonoBehaviour
             jumpPressedThisFrame = false;
             bool useCoyote = coyoteTimer > 0f && !isGrounded && jumpsRemaining == maxJumps;
 
-            if ((isGrounded || useCoyote || jumpsRemaining > 0 || InfiniteJumpInVolume) && !JumpBlockedByTerrain)
+            if ((isGrounded || useCoyote || jumpsRemaining > 0 || InfiniteJumpInVolume)
+                && !JumpBlockedByTerrain
+                && !InLandingDelay)   // brief settle after touching down
             {
                 if (useCoyote) coyoteTimer = 0f;
                 ExecuteJump();
@@ -232,6 +312,12 @@ public class CharacterController2D : MonoBehaviour
         // ── Physics ───────────────────────────────────────────────────────
         ApplyGravity();
         ApplyHorizontalMovement();
+        ApplyVolumeDrag();
+
+        // Resolve one-way platforms LAST, after this step's gravity and movement
+        // have been applied, so the sweep sees the player's true end position and
+        // any snap is the final word on where they are this step.
+        if (platformRider != null) platformRider.TickPlatforms();
 
         // ── Volume continuous downforce (quicksand sinking, etc.) ─────────
         if (activeVolume != null && activeVolume.continuousDownforce > 0f)
@@ -248,9 +334,17 @@ public class CharacterController2D : MonoBehaviour
             if (lethalTimer <= 0f)
             {
                 lethalTimer = 0f;
-                // Integrate with your AbstractCharacter death system.
-                // Replace with your event or direct call as needed.
-                GetComponent<AbstractCharacter>()?.TakeDamage(9999);
+                // Lethal terrain (lava, spikes, drowning). Pierces invulnerability
+                // so i-frames can't save the player from standing in it.
+                var self = GetComponent<AbstractCharacter>();
+                if (self != null)
+                {
+                    var lethal = new DamageInfo(DamageType.Physical, 9999)
+                    {
+                        ignoresInvulnerability = true
+                    };
+                    self.TakeDamage(lethal);
+                }
             }
         }
 
@@ -339,7 +433,26 @@ public class CharacterController2D : MonoBehaviour
 
     private void ApplyGravity()
     {
-        if (isGrounded && rb.velocity.y <= 0f) return;
+        // ── Who owns vertical position ──────────────────────────────────────
+        // The one-way platform rider authors the player's position directly while
+        // it supports them, so gravity must not interfere there.
+        if (platformRider != null && platformRider.IsSupported && rb.velocity.y <= 0f)
+            return;
+
+        // Everything else gets gravity, ALWAYS — including while "grounded".
+        //
+        // Earlier versions skipped gravity whenever isGrounded was true, then
+        // tried to narrow that with a small contact radius. Both fail for the
+        // same reason: the ground check is a circle of radius R, so the player
+        // reads as grounded while up to R pixels ABOVE the floor. Any version
+        // that skips gravity inside that band lets a knockback pop leave the
+        // player hovering in the gap with nothing acting on them — which is why
+        // a 2px hover took ~20 seconds to resolve, and only via physics drift.
+        //
+        // Gravity now always runs, so any gap closes immediately. The downward
+        // speed is clamped while grounded (below) so simply standing around never
+        // accumulates fall velocity, which is what the original early-return was
+        // really protecting against.
 
         float baseGravity = Physics2D.gravity.y * gravityMultiplier;
         float mult;
@@ -362,14 +475,67 @@ public class CharacterController2D : MonoBehaviour
 
         float newVY = rb.velocity.y + baseGravity * mult * Time.fixedDeltaTime;
         newVY = Mathf.Max(newVY, -maxFallSpeed);
+
+        // While grounded, cap how fast gravity may pull. This keeps the player
+        // pressed onto the surface — closing any small gap in a frame or two —
+        // without letting velocity build up while they are just standing there.
+        if (isGrounded && newVY < 0f)
+            newVY = Mathf.Max(newVY, -groundSettleSpeed);
+
         rb.velocity = new Vector2(rb.velocity.x, newVY);
     }
 
+    /// <summary>
+    /// Bleeds off velocity while submerged so water feels thick. Applied after
+    /// the normal movement/gravity so it damps both swimming and falling.
+    /// </summary>
+    private void ApplyVolumeDrag()
+    {
+        if (!IsInVolume) return;
+
+        float k = Mathf.Pow(volumeDrag, Time.fixedDeltaTime);
+        float vx = rb.velocity.x * k;
+        float vy = rb.velocity.y * k;
+
+        // Damp RISING much harder than falling. Water should make a jump feel
+        // laboured without making the player sink like a stone.
+        if (vy > 0f)
+            vy *= Mathf.Pow(volumeUpwardDrag, Time.fixedDeltaTime);
+
+        rb.velocity = new Vector2(vx, vy);
+    }
+
+    /// <summary>
+    /// Applies a knockback impulse and suspends horizontal control briefly so the
+    /// impulse actually reads on screen instead of being cancelled immediately.
+    /// Called by AbstractCharacter when a hit carries knockback.
+    /// </summary>
+    public void ApplyKnockback(Vector2 velocity)
+    {
+        rb.velocity    = velocity;
+        knockbackUntil = Time.time + knockbackRecovery;
+
+        // Deliberately DON'T force an airborne state here. If the impulse doesn't
+        // actually lift the player clear of the ground, the landing transition
+        // (isGrounded && !wasGrounded) never fires, so the state would stay
+        // Falling forever and the movement handler would early-return — that is
+        // the "animation stuck on idle until I jump" bug. The normal apex/landing
+        // logic and the recovery guard below handle the state correctly on their own.
+    }
+
+    /// <summary>True while a knockback impulse still owns the player's movement.</summary>
+    public bool InKnockback => Time.time < knockbackUntil;
+
     private void ApplyHorizontalMovement()
     {
-        float targetVX  = horizontal * EffectiveSpeed;
+        // While knocked back the impulse owns horizontal velocity. Re-applying
+        // input-driven movement here would cancel it out within a frame.
+        if (InKnockback) return;
+
+        float h         = GatedHorizontal;
+        float targetVX  = h * CurrentMoveSpeed;
         float accelBase = isGrounded ? EffectiveGroundAccel : airAcceleration;
-        float accel     = Mathf.Abs(horizontal) > 0.01f
+        float accel     = Mathf.Abs(h) > 0.01f
                           ? accelBase
                           : accelBase * EffectiveDecelMult;
 
@@ -391,8 +557,21 @@ public class CharacterController2D : MonoBehaviour
     private bool CheckGrounded()
     {
         if (jumpGroundCooldown > 0f) return false;
-        if (groundCheck == null)     return false;
-        return Physics2D.OverlapCircle(groundCheck.position, 6f, ground);
+
+        // Standing on a one-way platform counts as grounded. The rider owns that
+        // state because platform colliders are triggers and are deliberately not
+        // part of physics collision at all.
+        if (platformRider != null && platformRider.IsSupported) return true;
+
+        if (groundCheck == null) return false;
+
+        // Solid ground only — skip trigger colliders so a platform strip the
+        // player is passing UP through never reads as ground.
+        var hits = Physics2D.OverlapCircleAll(groundCheck.position, 6f, ground);
+        for (int i = 0; i < hits.Length; i++)
+            if (hits[i] != null && !hits[i].isTrigger) return true;
+
+        return false;
     }
 
     /// <summary>
@@ -403,19 +582,9 @@ public class CharacterController2D : MonoBehaviour
     /// </summary>
     private bool TryDropThroughPlatform()
     {
-        if (groundCheck == null) return false;
-
-        Collider2D[] hits = Physics2D.OverlapCircleAll(groundCheck.position, 6f);
-        foreach (var h in hits)
-        {
-            var platform = h.GetComponent<OneWayPlatform>() ?? h.GetComponentInParent<OneWayPlatform>();
-            if (platform != null)
-            {
-                platform.DropThrough();
-                return true;
-            }
-        }
-        return false;
+        // The rider already knows exactly which platform is supporting us, so
+        // there is nothing to search for here.
+        return platformRider != null && platformRider.TryDropThrough();
     }
 
     // =========================================================================
@@ -457,27 +626,47 @@ public class CharacterController2D : MonoBehaviour
         horizontal = context.ReadValue<Vector2>().x;
         vertical   = context.ReadValue<Vector2>().y;
 
+        // A canceled Value action means the stick/keys returned to neutral.
+        if (context.canceled) { horizontal = 0f; vertical = 0f; }
+
         if (state == State.Jumping || state == State.Falling || state == State.Attacking) return;
 
-        if (vertical >= 0f)
+        bool up   = vertical >  verticalDeadzone;
+        bool down = vertical < -verticalDeadzone;
+        bool left  = horizontal < -0.01f;
+        bool right = horizontal >  0.01f;
+
+        // UP interrupts everything and holds position (future "look up" hook).
+        // Diagonal up-left / up-right also stays put so the player can line up a
+        // diagonal bow shot without drifting.
+        if (up)
         {
-            if (horizontal > 0f) { SetAnim("WalkRight"); direction = Direction.Right; state = State.Walking; }
-            if (horizontal < 0f) { SetAnim("WalkLeft");  direction = Direction.Left;  state = State.Walking; }
+            state = State.Idle;
+            SetAnim(direction == Direction.Right ? "IdleRight" : "IdleLeft");
+            return;
         }
 
-        if (vertical < 0f && horizontal == 0f)
+        // DOWN + a direction crouch-walks; DOWN alone ducks in place.
+        if (down)
         {
-            SetAnim(direction == Direction.Right ? "DuckRight" : "DuckLeft");
-            state = State.Ducking;
+            if (left)       { SetAnim("SneakLeft");  direction = Direction.Left;  state = State.Sneaking; }
+            else if (right) { SetAnim("SneakRight"); direction = Direction.Right; state = State.Sneaking; }
+            else
+            {
+                SetAnim(direction == Direction.Right ? "DuckRight" : "DuckLeft");
+                state = State.Ducking;
+            }
+            return;
         }
 
-        if (vertical < 0f && horizontal < 0f) { SetAnim("SneakLeft");  direction = Direction.Left;  state = State.Sneaking; }
-        if (vertical < 0f && horizontal > 0f) { SetAnim("SneakRight"); direction = Direction.Right; state = State.Sneaking; }
-
-        if (context.canceled && direction != Direction.Right)
-            { SetAnim("IdleLeft");  direction = Direction.Left;  state = State.Idle; }
-        else if (context.canceled && direction != Direction.Left)
-            { SetAnim("IdleRight"); direction = Direction.Right; state = State.Idle; }
+        // Plain left/right walking.
+        if (left)       { SetAnim("WalkLeft");  direction = Direction.Left;  state = State.Walking; }
+        else if (right) { SetAnim("WalkRight"); direction = Direction.Right; state = State.Walking; }
+        else
+        {
+            state = State.Idle;
+            SetAnim(direction == Direction.Right ? "IdleRight" : "IdleLeft");
+        }
     }
 
     public void Jump(InputAction.CallbackContext context)
