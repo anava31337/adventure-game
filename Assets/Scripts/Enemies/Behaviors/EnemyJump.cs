@@ -28,9 +28,9 @@ public class EnemyJump : MonoBehaviour
     [Tooltip("Layer(s) considered solid ground.")]
     public LayerMask groundLayer;
 
-    [Header("Gravity (matches CharacterController2D scale)")]
-    public float gravityMultiplier   = 100f;
-    public float fallGravityMultiplier = 2.5f;
+    // NOTE: gravity tunables used to live here. They now belong to
+    // AbstractCharacter, so every character falls with identical numbers and
+    // there is no per-component value to drift out of sync.
 
     private Rigidbody2D      rb;
     private AbstractCharacter character;
@@ -41,7 +41,8 @@ public class EnemyJump : MonoBehaviour
     {
         rb        = GetComponent<Rigidbody2D>();
         character = GetComponent<AbstractCharacter>();
-        if (rb != null) rb.gravityScale = 0f;   // manual gravity for consistent feel
+        // Gravity is owned by AbstractCharacter now — one model for every
+        // character — so this component only supplies the hop impulse.
         timer = NextInterval();
     }
 
@@ -49,22 +50,19 @@ public class EnemyJump : MonoBehaviour
     {
         if (rb == null) return;
 
-        isGrounded = groundCheck != null &&
-                     Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
-
-        // Manual gravity
-        if (!isGrounded || rb.velocity.y > 0f)
-        {
-            float g    = Physics2D.gravity.y * gravityMultiplier;
-            float mult = rb.velocity.y < 0f ? fallGravityMultiplier : 1f;
-            rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y + g * mult * Time.fixedDeltaTime);
-        }
+        // Prefer the shared ground state from AbstractCharacter; fall back to a
+        // local overlap check for objects that don't have one.
+        isGrounded = character != null
+                   ? character.IsOnGround
+                   : (groundCheck != null &&
+                      Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer));
 
         // Jump timing
         timer -= Time.fixedDeltaTime;
         if (timer <= 0f && isGrounded)
         {
-            rb.velocity = new Vector2(rb.velocity.x, jumpHeight);
+            if (character != null) character.AddVerticalImpulse(jumpHeight);
+            else                    rb.velocity = new Vector2(rb.velocity.x, jumpHeight);
             timer = NextInterval();
         }
     }
