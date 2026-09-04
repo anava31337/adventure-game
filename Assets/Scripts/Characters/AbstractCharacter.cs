@@ -40,8 +40,132 @@ public class AbstractCharacter : MonoBehaviour, IDamageable
     #endregion
 
     #region MonoBehaviour
+
+    // =========================================================================
+    // Character gravity — one shared model for every character in the game
+    //
+    // Previously each character got gravity from whatever component happened to
+    // be attached, which produced three different behaviours:
+    //   • the Player used manual gravity in CharacterController2D
+    //   • Scuttler used Unity's built-in gravity (gravityScale 90)
+    //   • Landlouse had neither, and floated
+    // There was no single place that said "characters fall", so whether an enemy
+    // obeyed gravity depended on its component list — and a stray scene override
+    // could silently disable it with nothing to point at.
+    //
+    // Now every AbstractCharacter falls by default, using the SAME numbers as the
+    // player. The one exception is a character that has a CharacterController2D:
+    // that controller already owns gravity, entangled with jump arcs, coyote
+    // time, knockback and platform riding, so this stands down for it.
+    // =========================================================================
+
+    [Header("Gravity")]
+    [Tooltip("Turn off only for characters that should never fall — a floating " +
+             "ghost, a wall-mounted turret, a purely decorative NPC.")]
+    public bool useGravity = true;
+
+    [Tooltip("Gravity strength, multiplied by Physics2D.gravity. Matches the " +
+             "player's value so every character falls at the same rate.")]
+    public float gravityMultiplier = 100f;
+
+    [Tooltip("Extra gravity while descending. 1 = symmetric arc, matching the " +
+             "player's current setting.")]
+    public float fallGravityMultiplier = 1f;
+
+    [Tooltip("Terminal fall speed (px/s).")]
+    public float maxFallSpeed = 1200f;
+
+    [Tooltip("Layers this character can stand on.")]
+    public LayerMask groundLayer;
+
+    [Tooltip("Extra reach on the ground sweep (px).")]
+    public float groundSkin = 2f;
+
+    /// <summary>
+    /// Set by launch effects (SpawnLaunch, a scripted toss) that need to own
+    /// vertical motion for a moment. Gravity resumes automatically afterwards.
+    /// </summary>
+    public bool GravitySuspended { get; set; }
+
+    /// <summary>True while resting on ground. Meaningful only when this class owns gravity.</summary>
+    public bool IsOnGround { get; private set; }
+
+    private Rigidbody2D _body;
+    private Collider2D  _bodyCollider;
+    private bool        _controllerOwnsGravity;
+
+    private void InitGravity()
+    {
+        _body = GetComponent<Rigidbody2D>();
+
+        // Prefer a solid collider for ground tests; fall back to any collider so
+        // characters built with only a trigger still land correctly.
+        foreach (var c in GetComponents<Collider2D>())
+        {
+            if (_bodyCollider == null) _bodyCollider = c;
+            if (!c.isTrigger) { _bodyCollider = c; break; }
+        }
+
+        // The player's controller owns gravity; everything else falls through here.
+        _controllerOwnsGravity = GetComponent<CharacterController2D>() != null;
+
+        // Unity's built-in gravity is switched off so there is exactly ONE source
+        // of falling. This also makes stray gravityScale values on prefabs or
+        // scene instances irrelevant instead of silently breaking a character.
+        if (_body != null && !_controllerOwnsGravity)
+            _body.gravityScale = 0f;
+    }
+
+    protected virtual void FixedUpdate()
+    {
+        ApplyCharacterGravity();
+    }
+
+    private void ApplyCharacterGravity()
+    {
+        if (_controllerOwnsGravity) return;      // CharacterController2D handles it
+        if (!useGravity || GravitySuspended) return;
+        if (_body == null || _body.bodyType != RigidbodyType2D.Dynamic) return;
+
+        // Integrate gravity using the same model as the player.
+        float mult  = _body.velocity.y < 0f ? fallGravityMultiplier : 1f;
+        float newVY = _body.velocity.y - Mathf.Abs(Physics2D.gravity.y) * gravityMultiplier
+                                       * mult * Time.fixedDeltaTime;
+        newVY = Mathf.Max(newVY, -maxFallSpeed);
+        _body.velocity = new Vector2(_body.velocity.x, newVY);
+
+        // Land, using a swept test so a fast fall cannot tunnel through the floor.
+        IsOnGround = false;
+        if (_body.velocity.y <= 0f && _bodyCollider != null)
+        {
+            float travel = Mathf.Abs(_body.velocity.y) * Time.fixedDeltaTime + groundSkin;
+            Vector2 origin = new Vector2(_bodyCollider.bounds.center.x, _bodyCollider.bounds.min.y);
+            RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.down, travel, groundLayer);
+
+            if (hit.collider != null)
+            {
+                // Snap exactly onto the surface so characters rest on the ground
+                // rather than a pixel or two above or inside it.
+                float delta = hit.point.y - _bodyCollider.bounds.min.y;
+                _body.position = new Vector2(_body.position.x, _body.position.y + delta);
+                _body.velocity = new Vector2(_body.velocity.x, 0f);
+                IsOnGround = true;
+            }
+        }
+    }
+
+    /// <summary>Applies an upward impulse — hops, launches, springs.</summary>
+    public void AddVerticalImpulse(float velocity)
+    {
+        if (_body == null) return;
+        _body.velocity = new Vector2(_body.velocity.x, velocity);
+        IsOnGround = false;
+    }
+
     protected virtual void Start()
     {
+        InitGravity();
+
         if (this.GetComponent<SpriteRenderer>() != null && MapManager.Instance.map != null)
         {
             this.GetComponent<SpriteRenderer>().sortingOrder = MapManager.Instance.groundLayerID;

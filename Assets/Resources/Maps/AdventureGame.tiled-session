@@ -147,11 +147,11 @@
             "scaleInDock": 1
         },
         "AdventureWaterfall1_TEST.json": {
-            "scale": 2,
-            "selectedLayer": 5,
+            "scale": 1,
+            "selectedLayer": 8,
             "viewCenter": {
-                "x": 274.5,
-                "y": 617.75
+                "x": 600.5,
+                "y": 612.5
             }
         },
         "AdventureWaterfall1_TEST.json##Tools": {
@@ -166,20 +166,32 @@
         },
         "AdventureWaterfall1_TEST.json#BlankTile": {
             "dynamicWrapping": false,
-            "scaleInDock": 4
+            "scaleInDock": 1
+        },
+        "AdventureWaterfall1_TEST.json#Enemies": {
+            "dynamicWrapping": true,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
         },
         "AdventureWaterfall1_TEST.json#Gradients": {
             "dynamicWrapping": false,
             "scaleInDock": 1
         },
         "AdventureWaterfall1_TEST.json#Items": {
-            "scaleInDock": 4
+            "dynamicWrapping": true,
+            "scaleInDock": 1
+        },
+        "AdventureWaterfall1_TEST.json#NPCs": {
+            "dynamicWrapping": false,
+            "scaleInDock": 1
         },
         "AdventureWaterfall1_TEST.json#Objects": {
-            "scaleInDock": 4
+            "dynamicWrapping": true,
+            "scaleInDock": 1
         },
         "AdventureWaterfall1_TEST.json#Zelda2TheAdventureOfLink-Palace1": {
-            "scaleInDock": 4
+            "dynamicWrapping": false,
+            "scaleInDock": 1
         },
         "AdventureWaterfall1_TEST.tmx": {
             "expandedObjectLayers": [
@@ -533,8 +545,8 @@
             "scale": 2,
             "selectedLayer": 4,
             "viewCenter": {
-                "x": 452.5,
-                "y": 1127.75
+                "x": 1028.75,
+                "y": 898.25
             }
         },
         "bubble1TEST.json##Tools": {
@@ -679,25 +691,30 @@
             "scaleInDock": 1
         }
     },
+    "last.imagePath": "/Users/nava/Studio/Projects/AdventureGame/Project/adventure-game/Assets/Resources/Art/Enemies/Sprite Sheets",
     "openFiles": [
-        "bubble1TEST.tmx",
-        "bubble1TEST.json",
-        "Overworld1.json",
         "AdventureWaterfall1_TEST.json"
     ],
     "project": "AdventureGame.tiled-project",
+    "property.type": "float",
     "recentFiles": [
+        "AdventureWaterfall1_TEST.json",
+        "bubble1TEST.json",
         "bubble1.json",
         "bubble2TEST.json",
         "Overworld1.json",
         "bubble1TEST.tmx",
-        "bubble1TEST.json",
-        "AdventureWaterfall1_TEST.json",
         "AdventureWaterfall1_TEST1.json",
         "town1W.tmx",
         "Overworld1.tmx",
         "bubble1.tmx",
         "DrumbleVillage.json",
         "inventory.tmx"
-    ]
+    ],
+    "tileset.embedInMap": true,
+    "tileset.tileSize": {
+        "height": 32,
+        "width": 16
+    },
+    "tileset.type": 1
 }

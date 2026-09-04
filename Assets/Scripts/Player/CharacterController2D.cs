@@ -523,6 +523,19 @@ public class CharacterController2D : MonoBehaviour
         // logic and the recovery guard below handle the state correctly on their own.
     }
 
+    /// <summary>
+    /// Launches the player upward — springboards, bouncy creatures, trampolines.
+    /// Unlike knockback this does NOT suspend control: the player keeps steering
+    /// mid-bounce, which is what makes a spring feel good rather than punishing.
+    /// Air jumps are refreshed so a bounce can be chained into a jump.
+    /// </summary>
+    public void Bounce(float upwardVelocity)
+    {
+        rb.velocity    = new Vector2(rb.velocity.x, upwardVelocity);
+        jumpsRemaining = maxJumps;
+        state          = State.Jumping;   // lets the existing apex logic take over
+    }
+
     /// <summary>True while a knockback impulse still owns the player's movement.</summary>
     public bool InKnockback => Time.time < knockbackUntil;
 
