@@ -23,19 +23,25 @@ public class SpawnLaunch : MonoBehaviour
     private Rigidbody2D _rb;
     private Patrol      _patrol;
     private float       _gravity;
+    private float       _fallGravityMultiplier;
+    private float       _maxFallSpeed;
     private float       _timeout;
     private LayerMask   _groundLayer;
     private float       _elapsed;
     private bool        _running;
     private bool        _leftGround;
+    private AbstractCharacter _character;
 
     /// <summary>
     /// Starts the arc. The creature's own movement script is suspended until it
     /// lands, so the pop reads cleanly instead of being overwritten every frame.
     /// </summary>
     public void Begin(Vector2 velocity, float gravity, float timeout,
-                      LayerMask groundLayer, Patrol patrol)
+                      LayerMask groundLayer, Patrol patrol,
+                      float fallGravityMultiplier = 1f, float maxFallSpeed = 1200f)
     {
+        _fallGravityMultiplier = fallGravityMultiplier;
+        _maxFallSpeed          = maxFallSpeed;
         _rb          = GetComponent<Rigidbody2D>();
         _patrol      = patrol;
         _gravity     = gravity;
@@ -46,7 +52,13 @@ public class SpawnLaunch : MonoBehaviour
         _running     = true;
 
         if (_patrol != null) _patrol.enabled = false;
-        if (_rb != null)     _rb.velocity    = velocity;
+
+        // Take ownership of vertical motion for the arc so this and
+        // AbstractCharacter's gravity don't both pull at once.
+        _character = GetComponent<AbstractCharacter>();
+        if (_character != null) _character.GravitySuspended = true;
+
+        if (_rb != null) _rb.velocity = velocity;
     }
 
     private void FixedUpdate()
@@ -59,8 +71,14 @@ public class SpawnLaunch : MonoBehaviour
         // These enemy prefabs typically use gravityScale 0 with gravity supplied by
         // their movement scripts — which are suspended right now — so without this
         // there would be nothing pulling them back down.
-        _rb.velocity = new Vector2(_rb.velocity.x,
-                                   _rb.velocity.y - _gravity * Time.fixedDeltaTime);
+        //
+        // This mirrors CharacterController2D.ApplyGravity exactly, including the
+        // heavier fall gravity and the fall-speed clamp, so the pop follows the
+        // same curve as a player jump rather than merely a similar-looking one.
+        float mult = _rb.velocity.y < 0f ? _fallGravityMultiplier : 1f;
+        float newVY = _rb.velocity.y - _gravity * mult * Time.fixedDeltaTime;
+        newVY = Mathf.Max(newVY, -_maxFallSpeed);
+        _rb.velocity = new Vector2(_rb.velocity.x, newVY);
 
         // Note when we've actually cleared the ground, so the landing test can't
         // fire on the very first step while still overlapping the spawn point.
@@ -87,7 +105,10 @@ public class SpawnLaunch : MonoBehaviour
     private void Finish()
     {
         _running = false;
-        if (_patrol != null) _patrol.enabled = true;
+
+        // Hand vertical motion back to the shared gravity system.
+        if (_character != null) _character.GravitySuspended = false;
+        if (_patrol    != null) _patrol.enabled = true;
         Destroy(this);   // job done; remove the component
     }
 }

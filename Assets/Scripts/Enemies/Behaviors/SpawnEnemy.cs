@@ -18,18 +18,28 @@ public class SpawnEnemy : MonoBehaviour
     public int spawnCount = 2;
 
     [Header("Arc Launch")]
-    [Tooltip("Horizontal launch speed of spawned children (px/s).")]
-    public float launchSpeedX = 70f;
+    [Tooltip("Horizontal launch speed of spawned children (px/s). The player's " +
+             "run speed is 96, so values near that read as a confident leap.")]
+    public float launchSpeedX = 80f;
     [Tooltip("Upward launch speed of spawned children (px/s). Defaults match the " +
              "player's jumpHeight (320) so the pop reads like a normal jump arc.")]
-    public float launchSpeedY = 320f;
+    public float launchSpeedY = 320f;   // == the player's jumpHeight
     [Tooltip("Maximum seconds the arc may run before control is handed back, in " +
              "case the creature never registers a landing. Normally it lands first.")]
     public float launchControlDelay = 1.5f;
     [Tooltip("Downward acceleration during the arc (px/s²). Defaults to 981 to match " +
              "the player's gravity, so the arc has the same shape as a player jump. " +
              "Owned by this script, so the pop is identical regardless of prefab setup.")]
-    public float launchGravity = 981f;
+    public float launchGravity = 981f;  // == gravityMultiplier (100) x 9.81
+
+    [Tooltip("Extra gravity while falling, matching CharacterController2D's " +
+             "fallGravityMultiplier. Your player currently uses 1 (a symmetric " +
+             "arc); raise both together if you ever make the player fall faster.")]
+    public float launchFallGravityMultiplier = 1f;
+
+    [Tooltip("Terminal fall speed during the arc (px/s). Matches the player's " +
+             "maxFallSpeed so a long drop behaves the same.")]
+    public float launchMaxFallSpeed = 1200f;
     [Tooltip("Give each spawned creature randomised Patrol timings. OFF by default " +
              "so the pop-out direction, arc, and speed stay completely predictable.")]
     public bool randomizeSpawnedPatrol = false;
@@ -90,7 +100,8 @@ public class SpawnEnemy : MonoBehaviour
             {
                 var launch = clone.AddComponent<SpawnLaunch>();
                 launch.Begin(new Vector2(side * launchSpeedX, launchSpeedY),
-                             launchGravity, launchControlDelay, groundLayer, patrol);
+                             launchGravity, launchControlDelay, groundLayer, patrol,
+                             launchFallGravityMultiplier, launchMaxFallSpeed);
             }
         }
     }
