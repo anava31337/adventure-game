@@ -1213,7 +1213,7 @@
  "nextobjectid":47,
  "orientation":"orthogonal",
  "renderorder":"right-down",
- "tiledversion":"1.11.2",
+ "tiledversion":"1.11.0",
  "tileheight":16,
  "tilesets":[
         {
@@ -1656,6 +1656,42 @@
          "tilecount":160,
          "tileheight":16,
          "tilewidth":16
+        }, 
+        {
+         "columns":16,
+         "firstgid":713,
+         "image":"..\/Art\/NPCs\/townsfolk.png",
+         "imageheight":160,
+         "imagewidth":256,
+         "margin":0,
+         "name":"NPCs",
+         "spacing":0,
+         "tilecount":80,
+         "tileheight":32,
+         "tilewidth":16
+        }, 
+        {
+         "columns":0,
+         "firstgid":793,
+         "grid":
+            {
+             "height":1,
+             "orientation":"orthogonal",
+             "width":1
+            },
+         "margin":0,
+         "name":"Enemies",
+         "spacing":0,
+         "tilecount":1,
+         "tileheight":16,
+         "tiles":[
+                {
+                 "id":0,
+                 "image":"..\/Art\/Enemies\/Sprite Sheets\/scuttler.png",
+                 "imageheight":16,
+                 "imagewidth":352
+                }],
+         "tilewidth":352
         }],
  "tilewidth":16,
  "type":"map",
