@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69d6564818cab4b91baf2277ca8be2bf, type: 3}
+  m_Name: BOUNCY
+  m_EditorClassIdentifier: 
+  speedMultiplier: 1
+  frictionMultiplier: 1
+  overrideAcceleration: 0
+  groundAcceleration: 9999
+  jumpMultiplier: 2.5
+  preventJump: 0
+  infiniteJump: 0
+  fallGravityMultiplier: 1
+  volumeGravityScale: 1
+  continuousDownforce: 0
+  isLethal: 0
+  lethalDelay: 4
+  surfaceName: Bouncy
