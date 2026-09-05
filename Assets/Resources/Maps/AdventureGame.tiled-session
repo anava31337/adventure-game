@@ -1,5 +1,5 @@
 {
-    "activeFile": "AdventureWaterfall1_TEST.json",
+    "activeFile": "AdventureWaterfall1_TEST1.json",
     "expandedProjectPaths": [
         "."
     ],
@@ -235,10 +235,10 @@
         },
         "AdventureWaterfall1_TEST1.json": {
             "scale": 2,
-            "selectedLayer": 0,
+            "selectedLayer": 10,
             "viewCenter": {
                 "x": 317.25,
-                "y": 610.5
+                "y": 610.75
             }
         },
         "AdventureWaterfall1_TEST1.json##Tools": {
@@ -634,11 +634,11 @@
             "scaleInDock": 1
         },
         "inventory.tmx": {
-            "scale": 4,
-            "selectedLayer": 0,
+            "scale": 2,
+            "selectedLayer": 3,
             "viewCenter": {
-                "x": 358.875,
-                "y": 694.875
+                "x": 377.25,
+                "y": 656.25
             }
         },
         "inventory.tmx##Tools": {
@@ -693,23 +693,23 @@
     },
     "last.imagePath": "/Users/nava/Studio/Projects/AdventureGame/Project/adventure-game/Assets/Resources/Art/Enemies/Sprite Sheets",
     "openFiles": [
-        "AdventureWaterfall1_TEST.json"
+        "AdventureWaterfall1_TEST1.json"
     ],
     "project": "AdventureGame.tiled-project",
     "property.type": "float",
     "recentFiles": [
+        "inventory.tmx",
+        "AdventureWaterfall1_TEST1.json",
         "AdventureWaterfall1_TEST.json",
         "bubble1TEST.json",
         "bubble1.json",
         "bubble2TEST.json",
         "Overworld1.json",
         "bubble1TEST.tmx",
-        "AdventureWaterfall1_TEST1.json",
         "town1W.tmx",
         "Overworld1.tmx",
         "bubble1.tmx",
-        "DrumbleVillage.json",
-        "inventory.tmx"
+        "DrumbleVillage.json"
     ],
     "tileset.embedInMap": true,
     "tileset.tileSize": {
