@@ -59,6 +59,8 @@ public class SpawnEnemy : MonoBehaviour
 
     private void InstantiateClones(AbstractCharacter sender)
     {
+        var _self = GetComponent<AbstractCharacter>();
+
         if (sender != this.GetComponent<AbstractCharacter>()) return;
         if (enemyPrefab == null) return;
 
@@ -91,17 +93,34 @@ public class SpawnEnemy : MonoBehaviour
             var cloneChar = clone.GetComponent<AbstractCharacter>();
             if (cloneChar != null) cloneChar.RefreshHealthDisplay();
 
-            // The arc runs on the CLONE, not on this dying parent. This object is
-            // destroyed immediately after OnDeath fires, so a coroutine started
-            // here would be killed on the spot — which is exactly why spawned
-            // enemies used to drift down and then freeze permanently.
-            var rb = clone.GetComponent<Rigidbody2D>();
-            if (rb != null)
+            // If the spawned thing is a projectile (a landlouse egg), launch it
+            // through its OWN system rather than SpawnLaunch.
+            //
+            // Otherwise the two fight: LobbedProjectile suspends the character's
+            // gravity and waits to be launched, but SpawnLaunch never calls
+            // Launch(), so the projectile's arc physics, swept ground test and
+            // "at rest" flag never run. The egg falls through the floor and can
+            // never hatch, while an egg from EnemyLobber behaves perfectly —
+            // exactly the inconsistency between thrown eggs and death eggs.
+            var projectile = clone.GetComponent<LobbedProjectile>();
+            if (projectile != null)
             {
-                var launch = clone.AddComponent<SpawnLaunch>();
-                launch.Begin(new Vector2(side * launchSpeedX, launchSpeedY),
-                             launchGravity, launchControlDelay, groundLayer, patrol,
-                             launchFallGravityMultiplier, launchMaxFallSpeed);
+                projectile.Launch(new Vector2(side * launchSpeedX, launchSpeedY), _self);
+            }
+            else
+            {
+                // The arc runs on the CLONE, not on this dying parent. This object
+                // is destroyed immediately after OnDeath fires, so a coroutine
+                // started here would be killed on the spot — which is why spawned
+                // enemies used to drift down and then freeze permanently.
+                var rb = clone.GetComponent<Rigidbody2D>();
+                if (rb != null)
+                {
+                    var launch = clone.AddComponent<SpawnLaunch>();
+                    launch.Begin(new Vector2(side * launchSpeedX, launchSpeedY),
+                                 launchGravity, launchControlDelay, groundLayer, patrol,
+                                 launchFallGravityMultiplier, launchMaxFallSpeed);
+                }
             }
         }
     }
