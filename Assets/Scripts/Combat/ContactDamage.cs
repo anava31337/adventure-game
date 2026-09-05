@@ -46,6 +46,11 @@ public class ContactDamage : MonoBehaviour
              "0 — reserve knockdowns for heavy or specialised enemies.")]
     public float knockdownDuration = 0f;
 
+    [Tooltip("How far above this creature's top the target's feet may be and still " +
+             "count as landing ON it (px). A landing always applies upward " +
+             "knockback so the player recoils instead of standing on the enemy.")]
+    public float topContactTolerance = 6f;
+
     [Header("Rate")]
     [Tooltip("Minimum seconds between contact hits on the same target. The " +
              "target's own invulnerability window also applies on top of this.")]
@@ -115,9 +120,19 @@ public class ContactDamage : MonoBehaviour
             bool grounded = targetCC != null ? targetCC.IsGrounded
                                              : (trb != null && Mathf.Abs(trb.velocity.y) < 1f);
 
+            // Landing ON this creature from above should always throw the target
+            // back up, whether or not they were grounded. Without this, jumping
+            // onto an enemy applies only sideways knockback and the player keeps
+            // descending — which reads as standing on it rather than recoiling.
+            var myCol     = GetComponent<Collider2D>();
+            var targetCol = go.GetComponent<Collider2D>();
+            bool landedOnTop = myCol != null && targetCol != null &&
+                               targetCol.bounds.min.y >= myCol.bounds.max.y - topContactTolerance &&
+                               (trb == null || trb.velocity.y <= 0.01f);
+
             float vy;
-            if (grounded && knockbackLift > 0f)
-                vy = knockbackLift;              // one clean pop off the floor
+            if ((grounded || landedOnTop) && knockbackLift > 0f)
+                vy = knockbackLift;              // one clean pop
             else
                 vy = trb != null ? trb.velocity.y : 0f;   // preserve their arc
 
