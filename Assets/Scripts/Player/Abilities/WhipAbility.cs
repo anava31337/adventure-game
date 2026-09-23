@@ -179,8 +179,18 @@ public class WhipAbility : AbstractAbility
     /// <summary>The world-space point the whip emits from (player pivot + height).</summary>
     private Vector2 OriginPos => (Vector2)transform.position + new Vector2(0f, originHeight);
 
+    private StaminaSystem _stamina;
+
     private void BeginExtend()
     {
+        // Swinging costs stamina; a refused spend cancels the whip entirely.
+        if (_stamina == null) _stamina = GetComponent<StaminaSystem>();
+        if (_stamina != null && !_stamina.TryWhip())
+        {
+            _stamina.ReportBlockedAction();   // let the character react visibly
+            return;
+        }
+
         Debug.Log("[WhipAbility] Whip extending!");
         _whipDir       = GetWhipDirection();
         _currentLength = 0f;
