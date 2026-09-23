@@ -1,5 +1,5 @@
 {
-    "activeFile": "AdventureWaterfall1_TEST1.json",
+    "activeFile": "AdventureWaterfall1_TEST.json",
     "expandedProjectPaths": [
         "."
     ],
@@ -147,11 +147,14 @@
             "scaleInDock": 1
         },
         "AdventureWaterfall1_TEST.json": {
+            "expandedObjectLayers": [
+                10
+            ],
             "scale": 1.5,
             "selectedLayer": 8,
             "viewCenter": {
-                "x": 343.66666666666663,
-                "y": 608.3333333333333
+                "x": 536.3333333333333,
+                "y": 1035
             }
         },
         "AdventureWaterfall1_TEST.json##Tools": {
@@ -693,13 +696,13 @@
     },
     "last.imagePath": "/Users/nava/Studio/Projects/AdventureGame/Project/adventure-game/Assets/Resources/Art/Enemies/Sprite Sheets",
     "openFiles": [
-        "AdventureWaterfall1_TEST1.json"
+        "AdventureWaterfall1_TEST.json"
     ],
     "project": "AdventureGame.tiled-project",
     "property.type": "float",
     "recentFiles": [
-        "AdventureWaterfall1_TEST1.json",
         "AdventureWaterfall1_TEST.json",
+        "AdventureWaterfall1_TEST1.json",
         "inventory.tmx",
         "bubble1TEST.json",
         "bubble1.json",
