@@ -556,8 +556,16 @@ public class CharacterController2D : MonoBehaviour
         rb.velocity = new Vector2(newVX, rb.velocity.y);
     }
 
+    /// <summary>Cached stamina system; jumping and other actions are gated on it.</summary>
+    private StaminaSystem _staminaSystem;
+
     private void ExecuteJump()
     {
+        // Jumping costs stamina. A refused spend means the action simply does not
+        // happen — which is also how fatigue locks the player out entirely.
+        if (_staminaSystem == null) _staminaSystem = GetComponent<StaminaSystem>();
+        if (_staminaSystem != null && !_staminaSystem.TryJump()) return;
+
         rb.velocity = new Vector2(rb.velocity.x, EffectiveJumpHeight);
         // Don't consume a jump charge while swimming — infinite jump keeps the pool full
         if (!InfiniteJumpInVolume)
@@ -705,6 +713,21 @@ public class CharacterController2D : MonoBehaviour
     {
         if (context.started)
         {
+            // Gate the attack BEFORE the animation plays.
+            //
+            // Letting the swing animate while the hitbox is inert reads as a bug
+            // rather than a mechanic — the player sees a normal attack that
+            // simply fails to connect, with nothing explaining why. Refusing the
+            // input outright means the character visibly does not attack, which
+            // is at least honest, and gives a fatigue reaction somewhere to hook
+            // in later.
+            if (_staminaSystem == null) _staminaSystem = GetComponent<StaminaSystem>();
+            if (_staminaSystem != null && !_staminaSystem.TryAttack())
+            {
+                _staminaSystem.ReportBlockedAction();
+                return;
+            }
+
             if (direction != Direction.Right)
                 SetAnim(state == State.Ducking ? "DuckAttackLeft"  : "AttackLeft");
             else
