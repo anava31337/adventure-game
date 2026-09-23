@@ -7,5 +7,9 @@ AnimatorOverrideController:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: PregnantLandlouse
-  m_Controller: {fileID: 0}
-  m_Clips: []
+  m_Controller: {fileID: 9100000, guid: 3e1b0c51a03c444de9c460e8f49900aa, type: 2}
+  m_Clips:
+  - m_OriginalClip: {fileID: 7400000, guid: 11611a89475c44edeaa8cce60fcfe47a, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: 6c6e5e5b83dd640738774634c6487d6b, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: 1cc1d707325204b63bb3243633606e23, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: 5f1e1035aa8df4f91a8bbc1c26a933ae, type: 2}
