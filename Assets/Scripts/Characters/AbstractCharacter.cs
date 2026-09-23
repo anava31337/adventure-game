@@ -18,12 +18,34 @@ public class AbstractCharacter : MonoBehaviour, IDamageable
     public int MaxMp { get; set; }
     public int Endurance { get; set; }
     public int MaxEndurance { get; set; }
-    public int PhysicalAttack { get; set; }
-    public int PhysicalDefense { get; set; }
-    public int MagicAttack { get; set; }
-    public int MagicDefense { get; set; }
+    public int Stamina { get; set; }
+    public int Attack { get; set; }
+    public int Defense { get; set; }
+    public int SwordLevel { get; set; }
+    public int WhipLevel { get; set; }
+    public int BowLevel { get; set; }
     public int ExpToLvlUp { get; set; }
     public int CoinPurse { get; set; }
+
+    /// <summary>Current character level. Starts at 1.</summary>
+    public int Level { get; set; } = 1;
+
+    /// <summary>Experience accumulated toward the next level.</summary>
+    public int Exp { get; set; }
+
+    /// <summary>
+    /// The character that last landed a hit on this one. No longer used to award
+    /// experience — the Hero earns it for every enemy death regardless of cause —
+    /// but kept for attribution that DOES care who struck the blow, such as kill
+    /// quests or crediting a specific weapon's experience.
+    /// </summary>
+    public AbstractCharacter LastDamagedBy { get; private set; }
+
+    /// <summary>
+    /// Experience granted to whoever defeats this character. Zero by default;
+    /// Enemy overrides it with a per-prefab value set in the Inspector.
+    /// </summary>
+    public virtual int ExpReward => 0;
     //public AbstractItem[] Inventory { get; set; }
     //public Skill[] Skills { get; set; }
     //public Spell[] Spells { get; set; }
@@ -37,9 +59,146 @@ public class AbstractCharacter : MonoBehaviour, IDamageable
     public static event CharacterAction<Int32> OnCoinUpdate;
     public static event CharacterAction<AbstractCharacter> OnDeath;
 
+    /// <summary>Raised when a character's experience changes. Carries the character.</summary>
+    public static event CharacterAction<AbstractCharacter> OnExpChanged;
+
+    /// <summary>Raised when a character's coin purse changes. Carries the character.</summary>
+    public static event CharacterAction<AbstractCharacter> OnCoinsChanged;
+
+    /// <summary>
+    /// Raised each time a character gains a level. The hook for the level-up
+    /// screen where the player chooses HP, ATK, DEF or EN to raise.
+    /// </summary>
+    public static event CharacterAction<AbstractCharacter> OnLeveledUp;
+
     #endregion
 
     #region MonoBehaviour
+
+
+    // =========================================================================
+    // Resource changes — flat amounts and percentages
+    //
+    // Every resource has an int overload (a flat amount) and a float overload
+    // (a fraction of the MAXIMUM). The pair exists because items naturally come
+    // in both kinds: a small potion restores exactly 20 HP and stays a modest
+    // heal forever, while an elixir restores 50% and remains meaningful as the
+    // character's maximum grows. Expressing the second as a flat number would
+    // mean rebalancing every such item on every max-HP increase.
+    //
+    // Percentages are always OF THE MAXIMUM, never of what remains, so "heal
+    // 25%" restores a predictable amount rather than progressively less the more
+    // hurt you are.
+    // =========================================================================
+
+    /// <summary>
+    /// Grants experience and handles any level-ups it causes. Leftover experience
+    /// carries over, so a large reward can cross several levels at once.
+    /// </summary>
+    public void AddExp(int amount)
+    {
+        if (amount <= 0) return;
+        Exp += amount;
+
+        // Guard against a zero threshold, which would loop forever.
+        while (ExpToLvlUp > 0 && Exp >= ExpToLvlUp)
+        {
+            Exp  -= ExpToLvlUp;
+            Level++;
+            OnLeveledUp?.Invoke(this);
+        }
+
+        OnExpChanged?.Invoke(this);
+    }
+
+    /// <summary>Adds (or, with a negative amount, spends) coins, clamped 0–9999.</summary>
+    public void AddCoins(int amount)
+    {
+        if (amount == 0) return;
+        CoinPurse = Mathf.Clamp(CoinPurse + amount, 0, MaxCoins);
+        OnCoinsChanged?.Invoke(this);
+    }
+
+    /// <summary>Coin purse cap.</summary>
+    public const int MaxCoins = 9999;
+
+    /// <summary>Restores a flat amount of HP, clamped to MaxHp.</summary>
+    public void RestoreHp(int amount)
+    {
+        if (amount == 0) return;
+        Hp = Mathf.Clamp(Hp + amount, 0, MaxHp);
+        RefreshHealthDisplay();
+    }
+
+    /// <summary>Restores a fraction of MAXIMUM HP. 0.25f = a quarter of max.</summary>
+    public void RestoreHp(float fractionOfMax)
+    {
+        RestoreHp(Mathf.RoundToInt(MaxHp * fractionOfMax));
+    }
+
+    public void RestoreMp(int amount)
+    {
+        if (amount == 0) return;
+        Mp = Mathf.Clamp(Mp + amount, 0, MaxMp);
+    }
+
+    public void RestoreMp(float fractionOfMax)
+    {
+        RestoreMp(Mathf.RoundToInt(MaxMp * fractionOfMax));
+    }
+
+    /// <summary>
+    /// Restores endurance. Stamina is capped by CURRENT endurance, so raising
+    /// endurance raises the ceiling stamina may regenerate to.
+    /// </summary>
+    public void RestoreEndurance(int amount)
+    {
+        if (amount == 0) return;
+        Endurance = Mathf.Clamp(Endurance + amount, 0, MaxEndurance);
+    }
+
+    public void RestoreEndurance(float fractionOfMax)
+    {
+        RestoreEndurance(Mathf.RoundToInt(MaxEndurance * fractionOfMax));
+    }
+
+    /// <summary>Restores stamina, clamped to CURRENT endurance rather than max.</summary>
+    public void RestoreStamina(int amount)
+    {
+        if (amount == 0) return;
+        Stamina = Mathf.Clamp(Stamina + amount, 0, Endurance);
+    }
+
+    public void RestoreStamina(float fractionOfEndurance)
+    {
+        RestoreStamina(Mathf.RoundToInt(Endurance * fractionOfEndurance));
+    }
+
+    /// <summary>
+    /// Damage as a fraction of MAXIMUM HP, routed through the normal pipeline so
+    /// resistances, invulnerability, knockback and the hit flash all still apply.
+    /// Useful for percentage-based hazards that stay dangerous at any level.
+    /// </summary>
+    public void TakeDamage(float fractionOfMaxHp, DamageType type = DamageType.Physical)
+    {
+        int amount = Mathf.Max(1, Mathf.RoundToInt(MaxHp * fractionOfMaxHp));
+        TakeDamage(new DamageInfo(type, amount));
+    }
+
+    /// <summary>Spends stamina if there is enough. Returns false and spends nothing otherwise.</summary>
+    public bool TrySpendStamina(int amount)
+    {
+        if (amount <= 0) return true;
+        if (Stamina < amount) return false;
+        Stamina -= amount;
+        return true;
+    }
+
+    /// <summary>Spends a fraction of CURRENT endurance worth of stamina.</summary>
+    public bool TrySpendStamina(float fractionOfEndurance)
+    {
+        return TrySpendStamina(Mathf.RoundToInt(Endurance * fractionOfEndurance));
+    }
 
     // =========================================================================
     // Character gravity — one shared model for every character in the game
@@ -198,17 +357,82 @@ public class AbstractCharacter : MonoBehaviour, IDamageable
     #endregion
 
     #region Methods
+    /// <summary>
+    /// Loads this character's stats for a level from its CSV.
+    ///
+    /// Each stat is read through ReadStat, which names the exact row and column
+    /// on failure. A missing row used to throw an IndexOutOfRangeException that
+    /// aborted the character's Start() partway through — leaving HP, MP and
+    /// endurance at zero with no hint why, and surfacing much later as empty
+    /// HUD bars. Now a short or malformed file logs precisely what is wrong and
+    /// the remaining stats still load.
+    /// </summary>
     protected void SetLevelData(int Level)
     {
         data = this.GetComponent<CSVReader>();
-        this.MaxHp = Convert.ToInt32(data.grid[Level, 1]);
-        this.MaxMp = Convert.ToInt32(data.grid[Level, 2]);
-        this.MaxEndurance = Convert.ToInt32(data.grid[Level, 3]);
-        this.PhysicalAttack = Convert.ToInt32(data.grid[Level, 4]);
-        this.PhysicalDefense = Convert.ToInt32(data.grid[Level, 5]);
-        this.MagicAttack = Convert.ToInt32(data.grid[Level, 6]);
-        this.MagicDefense = Convert.ToInt32(data.grid[Level, 7]);
-        this.ExpToLvlUp = Convert.ToInt32(data.grid[Level, 8]);
+
+        if (data == null || data.grid == null)
+        {
+            Debug.LogError($"[{name}] SetLevelData: no CSVReader, or its CSV failed to " +
+                           "load. Assign a stats CSV to the CSVReader component.", this);
+            return;
+        }
+
+        this.MaxHp        = ReadStat(Level, 1, "MaxHP");
+        this.MaxMp        = ReadStat(Level, 2, "MaxMP");
+        this.MaxEndurance = ReadStat(Level, 3, "MaxEndurance");
+        // Stamina's ceiling is CURRENT endurance, so it is seeded from that
+        // rather than from a separate maximum.
+        this.Stamina      = this.MaxEndurance;
+        this.Attack       = ReadStat(Level, 4, "Attack");
+        this.Defense      = ReadStat(Level, 5, "Defense");
+        this.SwordLevel   = ReadStat(Level, 6, "SwordLevel");
+        this.WhipLevel    = ReadStat(Level, 7, "WhipLevel");
+        this.BowLevel     = ReadStat(Level, 8, "BowLevel");
+        this.ExpToLvlUp   = ReadStat(Level, 9, "ExpToLevelUp");
+    }
+
+    /// <summary>
+    /// Reads one integer stat, returning 0 and logging a specific warning if the
+    /// row or column is missing, or the cell isn't a number. The grid is indexed
+    /// [column, row]: the column is the level, the row is the stat.
+    /// </summary>
+    private int ReadStat(int level, int row, string statName)
+    {
+        string file = (data.csvFile != null) ? data.csvFile.name : "(unnamed CSV)";
+
+        int cols = data.grid.GetLength(0);
+        int rows = data.grid.GetLength(1);
+
+        if (row >= rows)
+        {
+            Debug.LogWarning($"[{name}] {file}.csv has no row {row} for '{statName}' " +
+                             $"(it has {rows} rows, 0-{rows - 1}). Add a '{statName}' row " +
+                             "in that position, or the stat defaults to 0.", this);
+            return 0;
+        }
+        if (level >= cols)
+        {
+            Debug.LogWarning($"[{name}] {file}.csv has no column for level {level} " +
+                             $"on row '{statName}'. Defaulting to 0.", this);
+            return 0;
+        }
+
+        string cell = data.grid[level, row];
+        if (string.IsNullOrWhiteSpace(cell))
+        {
+            Debug.LogWarning($"[{name}] {file}.csv row '{statName}' is empty for " +
+                             $"level {level}. Defaulting to 0.", this);
+            return 0;
+        }
+
+        if (!int.TryParse(cell.Trim(), out int value))
+        {
+            Debug.LogWarning($"[{name}] {file}.csv row '{statName}', level {level}: " +
+                             $"'{cell}' is not a whole number. Defaulting to 0.", this);
+            return 0;
+        }
+        return value;
     }
 
     public void SetAnim(string animName)
@@ -274,6 +498,10 @@ public class AbstractCharacter : MonoBehaviour, IDamageable
         // Post-hit invulnerability — unless this hit is designed to pierce it.
         if (IsInvulnerable && !info.ignoresInvulnerability) return;
 
+        // Remember who hit us, so the kill can be credited if this hit is fatal.
+        if (info.instigator != null && info.instigator != this)
+            LastDamagedBy = info.instigator;
+
         // Resistances are optional; a character without the component takes
         // everything at full strength.
         Dictionary<DamageType, int> applied;
@@ -328,6 +556,7 @@ public class AbstractCharacter : MonoBehaviour, IDamageable
         if (this.Hp <= 0)
         {
             BroadcastHealth(0);
+
             // Null-conditional: this previously threw a NullReferenceException
             // whenever a character died with nothing subscribed to OnDeath.
             OnDeath?.Invoke(this);

@@ -24,16 +24,20 @@ public class Player : AbstractCharacter
         this.Hp = this.MaxHp;
         this.Mp = this.MaxMp;
         this.Endurance = this.MaxEndurance;
+        this.Stamina = this.MaxEndurance;
+
+        // Announce the starting stats, exactly as Enemy.Start and NPC.Start do.
+        // Without this the HUD is subscribed but never told anything until the
+        // first hit, so the bars build with a maximum of zero and stay empty.
+        RefreshHealthDisplay();
     }
 
     private void Update()
     {
-
     }
 
     public void FixedUpdate()
     {
-
     }
 
     void OnEnable()
@@ -42,13 +46,33 @@ public class Player : AbstractCharacter
         // Put a DamageDealer on the enemy's BODY collider (damageOnStay = true,
         // small knockback) and it will damage the player directly on touch.
         Portal.OnPlayerSummon += MovePlayerToPortal;
+        AbstractCharacter.OnDeath += CollectExperience;
         //DropItem.OnCharacterTouch += Heal;
     }
 
     void OnDisable()
     {
         Portal.OnPlayerSummon -= MovePlayerToPortal;
+        AbstractCharacter.OnDeath -= CollectExperience;
         //DropItem.OnCharacterContact -= Heal;
+    }
+
+    /// <summary>
+    /// Earns the experience of every enemy that dies, however it died — to the
+    /// sword, the bow, a pit, a trap, or another enemy.
+    ///
+    /// This listens to OnDeath rather than being awarded from OnDestroy, because
+    /// OnDestroy also fires when a scene unloads, the map changes, or the game
+    /// quits — crediting there would hand out experience for every enemy still
+    /// alive the moment the player left a level. OnDeath fires only on an actual
+    /// death.
+    /// </summary>
+    private void CollectExperience(AbstractCharacter deceased)
+    {
+        if (deceased == null || deceased == this) return;
+        if (deceased.ExpReward <= 0) return;   // non-enemies award nothing
+
+        AddExp(deceased.ExpReward);
     }
     #endregion
 

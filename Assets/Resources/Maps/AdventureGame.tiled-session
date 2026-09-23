@@ -147,11 +147,11 @@
             "scaleInDock": 1
         },
         "AdventureWaterfall1_TEST.json": {
-            "scale": 1,
+            "scale": 1.5,
             "selectedLayer": 8,
             "viewCenter": {
-                "x": 600.5,
-                "y": 612.5
+                "x": 343.66666666666663,
+                "y": 608.3333333333333
             }
         },
         "AdventureWaterfall1_TEST.json##Tools": {
@@ -235,10 +235,10 @@
         },
         "AdventureWaterfall1_TEST1.json": {
             "scale": 2,
-            "selectedLayer": 10,
+            "selectedLayer": 7,
             "viewCenter": {
-                "x": 317.25,
-                "y": 610.75
+                "x": 667.25,
+                "y": 719.25
             }
         },
         "AdventureWaterfall1_TEST1.json##Tools": {
@@ -698,9 +698,9 @@
     "project": "AdventureGame.tiled-project",
     "property.type": "float",
     "recentFiles": [
-        "inventory.tmx",
         "AdventureWaterfall1_TEST1.json",
         "AdventureWaterfall1_TEST.json",
+        "inventory.tmx",
         "bubble1TEST.json",
         "bubble1.json",
         "bubble2TEST.json",

@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4772274102552729747}
   - component: {fileID: 3431953510573014207}
+  - component: {fileID: 4157977526301370286}
   - component: {fileID: 4673099849164276027}
   - component: {fileID: 3442285583523251705}
   - component: {fileID: 2048545850068908215}
@@ -94,6 +95,27 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!95 &4157977526301370286
+Animator:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2038398953212807450}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 22100000, guid: 5a30666dbbc1e4a2a8b524231030c601, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!50 &4673099849164276027
 Rigidbody2D:
   serializedVersion: 4
@@ -208,6 +230,7 @@ MonoBehaviour:
     m_Bits: 8192
   groundSkin: 2
   invulnerabilityDuration: 0.1
+  expReward: 1
 --- !u!114 &6273574947520026107
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -266,6 +289,7 @@ MonoBehaviour:
   knockbackForce: 64
   knockbackLift: 56
   knockdownDuration: 0
+  topContactTolerance: 6
   hitInterval: 1
 --- !u!114 &8298297448526127224
 MonoBehaviour:
