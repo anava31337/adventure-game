@@ -25,15 +25,14 @@ public class HUDCanvas : MonoBehaviour
 
     void OnEnable()
     {
-        Player.OnPlayerDamage += UpdateHpBar;
-        Player.OnHpUpdate += UpdateHpBar;
-        Player.OnHpUpdate += UpdateHpBar;
+        //Player.OnPlayerDamage += UpdateHpBar;
+        //Player.OnHpUpdate += UpdateHpBar;
     }
 
     void OnDisable()
     {
-        Player.OnPlayerDamage -= UpdateHpBar;
-        Player.OnHpUpdate -= UpdateHpBar;
+        //Player.OnPlayerDamage -= UpdateHpBar;
+        //Player.OnHpUpdate -= UpdateHpBar;
     }
 
     void UpdateHpBar(int hpPercentage)
