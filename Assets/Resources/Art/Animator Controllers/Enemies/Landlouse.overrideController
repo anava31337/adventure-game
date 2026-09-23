@@ -8,4 +8,12 @@ AnimatorOverrideController:
   m_PrefabAsset: {fileID: 0}
   m_Name: Landlouse
   m_Controller: {fileID: 9100000, guid: 3e1b0c51a03c444de9c460e8f49900aa, type: 2}
-  m_Clips: []
+  m_Clips:
+  - m_OriginalClip: {fileID: 7400000, guid: 11611a89475c44edeaa8cce60fcfe47a, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: ae2289f745a744f79999b49b847fabc2, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: 1cc1d707325204b63bb3243633606e23, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: e30517ac3567f47eba4b2bdde168635f, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: d6d6e33fd35aa4803930979fc9a9e4bf, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: f68489212942b40dd8fd7777899b78c3, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: 1fcf4ed42a488406694ee8b52bb5d589, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: baa961590ba5b42b5a4e646a2c71f5e8, type: 2}

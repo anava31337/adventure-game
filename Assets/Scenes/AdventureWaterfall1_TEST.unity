@@ -611,7 +611,7 @@ PrefabInstance:
     - target: {fileID: 4042540650696090503, guid: d1be3672468b844d99dc431612628f2a,
         type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4042540650696391865, guid: d1be3672468b844d99dc431612628f2a,
         type: 3}
@@ -4203,13 +4203,13 @@ MonoBehaviour:
   mode: 1
   autoDetectMode: 1
   unitsPerEndurancePoint: 16
-  regenPerSecond: 4
-  fatiguedRegenPerSecond: 6
+  regenPerSecond: 6
+  fatiguedRegenPerSecond: 4
   regenDelay: 0.5
-  attackCost: 3
+  attackCost: 2
   jumpCost: 2
-  whipCost: 3
-  bowCost: 4
+  whipCost: 2
+  bowCost: 3
   dashCost: 2
 --- !u!1 &2085035292
 GameObject:
@@ -4339,7 +4339,8 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Controller
       value: 
-      objectReference: {fileID: 9100000, guid: b15bac505886145cbaca74804d8ca73d, type: 2}
+      objectReference: {fileID: 22100000, guid: f4a0ee3b3f863483ca9fd1c5dce7a554,
+        type: 2}
     - target: {fileID: 2146617373467319740, guid: c2265b767c05c4d86bd5bb7d7e81855c,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -4398,7 +4399,7 @@ PrefabInstance:
     - target: {fileID: 4773104145754252857, guid: c2265b767c05c4d86bd5bb7d7e81855c,
         type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -4870,7 +4871,7 @@ PrefabInstance:
     - target: {fileID: 2038398953212807450, guid: 4cc31ebbbe439492eb588518d0b601e9,
         type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4772274102552729747, guid: 4cc31ebbbe439492eb588518d0b601e9,
         type: 3}
