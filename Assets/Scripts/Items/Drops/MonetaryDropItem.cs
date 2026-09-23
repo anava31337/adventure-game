@@ -10,15 +10,11 @@ public class MonetaryDropItem : DropItem
         base.Use(character);
         if (character != null)
         {
-            if (character.CoinPurse + monetaryValue < 9999)
-            {
-                character.CoinPurse += monetaryValue;
-            }
-            else if(character.CoinPurse + monetaryValue > 9999)
-            {
-                character.CoinPurse = 9999;
-            }
-            character.CoinUpdate(monetaryValue);
+            // AddCoins clamps to the purse cap and raises OnCoinsChanged. The old
+            // comparison used "< 9999" then "> 9999", so landing on exactly 9999
+            // matched neither branch and the coin was silently lost.
+            character.AddCoins(monetaryValue);
+            character.CoinUpdate(monetaryValue);   // legacy event, kept for existing listeners
         }
     }
 }
