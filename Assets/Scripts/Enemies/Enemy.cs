@@ -33,6 +33,16 @@ using UnityEngine;
 
 public class Enemy : AbstractCharacter
 {
+    // Private, so nothing outside can change it at runtime, but [SerializeField]
+    // exposes it in the Inspector — set it per prefab: a Scuttler might give 1,
+    // a Pregnant Landlouse 5. Tune a whole enemy type by editing its prefab once.
+    [Header("Rewards")]
+    [Tooltip("Experience awarded to whoever defeats this enemy.")]
+    [SerializeField, Min(0)] private int expReward = 1;
+
+    /// <summary>Read by AbstractCharacter when this enemy dies, to credit the killer.</summary>
+    public override int ExpReward => expReward;
+
     private void Start()
     {
         base.Start();
