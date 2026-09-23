@@ -83,8 +83,18 @@ public class BowAbility : AbstractAbility
     // Fire
     // =========================================================================
 
+    private StaminaSystem _stamina;
+
     private void FireArrow()
     {
+        // Drawing the bow costs stamina.
+        if (_stamina == null) _stamina = GetComponent<StaminaSystem>();
+        if (_stamina != null && !_stamina.TryBow())
+        {
+            _stamina.ReportBlockedAction();   // let the character react visibly
+            return;
+        }
+
         Debug.Log("[BowAbility] Firing arrow!");
         if (arrowPrefab == null)
         {

@@ -21,6 +21,11 @@ using UnityEngine;
 
 public class PlayerSword : DamageDealer
 {
+    // NOTE: no stamina check here. The cost is paid by the Attack input in
+    // CharacterController2D, which refuses the action outright so the animation
+    // never plays. Checking again at this point would double-charge, and would
+    // only be able to neuter a swing that had already visibly started.
+
     protected override void Awake()
     {
         base.Awake();   // finds the Player as owner via the parent hierarchy
